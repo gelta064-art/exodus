@@ -79,37 +79,39 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Cinematic deep-warm dark palette */
+  --background: oklch(0.14 0.008 280);
+  --foreground: oklch(0.97 0.005 80);
+  --card: oklch(0.185 0.01 280);
+  --card-foreground: oklch(0.97 0.005 80);
+  --popover: oklch(0.185 0.01 280);
+  --popover-foreground: oklch(0.97 0.005 80);
+  /* Amber/gold primary for the cinema feel */
+  --primary: oklch(0.82 0.15 75);
+  --primary-foreground: oklch(0.16 0.02 75);
+  --secondary: oklch(0.26 0.012 280);
+  --secondary-foreground: oklch(0.97 0.005 80);
+  --muted: oklch(0.24 0.01 280);
+  --muted-foreground: oklch(0.68 0.012 80);
+  --accent: oklch(0.3 0.04 75);
+  --accent-foreground: oklch(0.95 0.02 80);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.82 0.15 75);
+  --chart-1: oklch(0.82 0.15 75);
+  --chart-2: oklch(0.7 0.13 50);
+  --chart-3: oklch(0.65 0.16 30);
+  --chart-4: oklch(0.6 0.12 200);
+  --chart-5: oklch(0.55 0.1 280);
+  --sidebar: oklch(0.16 0.008 280);
+  --sidebar-foreground: oklch(0.97 0.005 80);
+  --sidebar-primary: oklch(0.82 0.15 75);
+  --sidebar-primary-foreground: oklch(0.16 0.02 75);
+  --sidebar-accent: oklch(0.26 0.012 280);
+  --sidebar-accent-foreground: oklch(0.97 0.005 80);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.82 0.15 75);
 }
 
 @layer base {
@@ -120,3 +122,85 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Cinematic scrollbar */
+.ct-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.ct-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ct-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0.02 75 / 0.5);
+  border-radius: 9999px;
+}
+.ct-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.05 75 / 0.7);
+}
+
+/* Ken Burns slow zoom/pan for cinematic scene stills */
+@keyframes kenburns {
+  0% {
+    transform: scale(1.05) translate(0%, 0%);
+  }
+  50% {
+    transform: scale(1.18) translate(-2%, -1.5%);
+  }
+  100% {
+    transform: scale(1.05) translate(0%, 0%);
+  }
+}
+.animate-kenburns {
+  animation: kenburns 14s ease-in-out infinite;
+}
+
+@keyframes kenburns-alt {
+  0% {
+    transform: scale(1.12) translate(-1%, 1%);
+  }
+  50% {
+    transform: scale(1.2) translate(2%, -1%);
+  }
+  100% {
+    transform: scale(1.12) translate(-1%, 1%);
+  }
+}
+.animate-kenburns-alt {
+  animation: kenburns-alt 16s ease-in-out infinite;
+}
+
+/* Soft cinematic vignette overlay */
+.ct-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    oklch(0.08 0.01 280 / 0.55) 100%
+  );
+}
+
+/* Film grain shimmer for loading placeholders */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.ct-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0.01 280) 0%,
+    oklch(0.3 0.02 75) 50%,
+    oklch(0.22 0.01 280) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Letterbox bars */
+.ct-letterbox {
+  background: oklch(0.04 0 0);
+}
+
