@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { breakdownDrama } from "@/lib/ai";
 import { colorForName } from "@/lib/voices";
+import { GENRE_PRESETS } from "@/lib/types";
 import type { SeriesData } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -27,6 +28,7 @@ function serialize(s: any): SeriesData {
         name: c.name,
         role: c.role,
         voice: c.voice,
+        visualDescription: c.visualDescription ?? "",
         accentColor: c.accentColor,
         order: c.order,
       })),
@@ -77,7 +79,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { sourceText, title } = await req.json();
+    const { sourceText, title, genreId } = await req.json();
     if (
       !sourceText ||
       typeof sourceText !== "string" ||
@@ -89,7 +91,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const breakdown = await breakdownDrama(sourceText, title);
+    // Look up genre preset (if provided) to steer the LLM director
+    const genrePreset = genreId
+      ? GENRE_PRESETS.find((g) => g.id === genreId) ?? null
+      : null;
+    const genreHint = genrePreset
+      ? { label: genrePreset.label, tropes: genrePreset.tropes }
+      : null;
+
+    const breakdown = await breakdownDrama(sourceText, title, genreHint);
 
     const series = await db.series.create({
       data: {
@@ -103,6 +113,7 @@ export async function POST(req: NextRequest) {
             name: c.name.slice(0, 60),
             role: c.role.slice(0, 60),
             voice: c.voice,
+            visualDescription: (c.visual ?? "").slice(0, 300),
             accentColor: colorForName(c.name),
             order: i,
           })),

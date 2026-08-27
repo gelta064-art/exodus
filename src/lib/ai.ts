@@ -37,21 +37,22 @@ const DIRECTOR_SYSTEM = `You are "Dramai Director", a master creator of viral ve
 You transform a given story into an addictive, dialogue-driven mini-drama series.
 
 NON-NEGOTIABLE RULES:
-- Produce exactly 3 episodes.
+- Produce exactly 5 episodes. Each episode must escalate the stakes.
 - Each episode has 3 scenes. Each scene has 1 to 3 spoken dialogue lines.
 - It is DIALOGUE, not narration. Characters speak TO each other. Show, don't tell. No narrator.
-- Every dialogue line must be SHORT — under 120 characters — and emotionally charged.
-- Each episode must end on a CLIFFHANGER: a dramatic "hook" one-liner (under 90 chars) that makes the viewer desperately want the next episode. Think betrayal revealed, identity exposed, a slap, a kiss interrupted.
+- Every dialogue line must be SHORT — under 110 characters — and emotionally charged.
+- Each episode MUST end on a "coin-moment" CLIFFHANGER — a dramatic one-liner "hook" (under 85 chars) that makes the viewer desperately pay to see the next episode. The best cliffhangers are: a betrayal revealed, an identity exposed, a slap, a kiss interrupted, a secret uncovered, a death, a pregnancy revealed, a switch of loyalty, a shocking arrival. NEVER end on a calm or resolved note.
 - Identify 2 to 4 characters. Give each a distinct role (protagonist, antagonist, love interest, rival...).
-- Detect the genre from the story (romance, revenge, rebirth, thriller, fantasy, family feud, contract marriage, hidden identity, comeback...).
-- Scene "prompt" must describe a VERTICAL 9:16 frame: who is in frame, setting, mood, camera angle (close-up / over-shoulder / wide), lighting. Concrete and visual. No text/letters in image.
+- Detect the genre from the story. If a genre hint is provided, FOLLOW its tropes closely.
+- For each character, write "visual": a concise physical description (under 120 chars) covering age, hair, build, distinctive clothing, and one memorable feature. This stays consistent across every scene.
+- Scene "prompt" must describe a VERTICAL 9:16 frame: who is in frame (using the characters' visual traits), setting, mood, camera angle (close-up / over-shoulder / wide), lighting. Concrete and visual. No text/letters in image.
 
 VOICE ASSIGNMENT — assign each character one of these EXACT voice ids, distributing distinct voices:
 ${VOICE_OPTIONS.map((v) => `- "${v}"`).join("\n")}
 Give the protagonist "tongtong" if female-leaning or "jam" if male-leaning. Spread the rest so no two main speakers share a voice.
 
 OUTPUT: ONLY a JSON object (no markdown, no prose) matching EXACTLY:
-{"title":string(<=50 chars),"description":string(logline <=110 chars),"genre":string,"coverPrompt":string(vertical poster, no text),"characters":[{"name":string,"role":string,"voice":string}],"episodes":[{"title":string,"hook":string,"scenes":[{"prompt":string,"lines":[{"character":string,"text":string,"emotion":string}]}]}]}
+{"title":string(<=50 chars),"description":string(logline <=110 chars),"genre":string,"coverPrompt":string(vertical poster, no text),"characters":[{"name":string,"role":string,"voice":string,"visual":string}],"episodes":[{"title":string,"hook":string,"scenes":[{"prompt":string,"lines":[{"character":string,"text":string,"emotion":string}]}]}]}
 
 "emotion" is one word: angry, cold, shocked, sad, smug, desperate, tender, mocking, fearful, defiant, amused.`;
 
@@ -69,12 +70,18 @@ function extractJson(text: string): unknown {
 /** Have the LLM turn a story into a structured drama series. */
 export async function breakdownDrama(
   sourceText: string,
-  hintTitle?: string
+  hintTitle?: string,
+  genreHint?: { label: string; tropes: string } | null
 ): Promise<DramaBreakdown> {
   const zai = await getZai();
-  const userContent = hintTitle
-    ? `Suggested title (inspiration only): ${hintTitle}\n\nStory:\n${sourceText}`
-    : `Story:\n${sourceText}`;
+  const parts = [`Story:\n${sourceText}`];
+  if (hintTitle) parts.unshift(`Suggested title (inspiration only): ${hintTitle}`);
+  if (genreHint) {
+    parts.push(
+      `\nGENRE DIRECTION — follow the "${genreHint.label}" genre closely. Incorporate these tropes: ${genreHint.tropes}.`
+    );
+  }
+  const userContent = parts.join("\n\n");
 
   const completion = await zai.chat.completions.create({
     messages: [

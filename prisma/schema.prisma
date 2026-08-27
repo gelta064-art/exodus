@@ -30,6 +30,7 @@ model Character {
   name        String
   role        String
   voice       String
+  visualDescription String @default("")
   accentColor String  @default("amber")
   order       Int     @default(0)
 

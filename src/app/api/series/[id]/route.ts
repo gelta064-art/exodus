@@ -26,6 +26,7 @@ function serialize(s: any): SeriesData {
         name: c.name,
         role: c.role,
         voice: c.voice,
+        visualDescription: c.visualDescription ?? "",
         accentColor: c.accentColor,
         order: c.order,
       })),

@@ -61,3 +61,23 @@ Stage Summary:
 - Dramai is a fully functional AI mini-drama app: paste story → LLM writes dialogue script with cliffhangers + assigns character voices → image gen paints 9:16 scenes → TTS generates per-line dialogue audio → Reels-style vertical swipe player with Ken Burns, crossfades, subtitle animations, auto-advance, and cliffhanger hooks
 - Test series "The Contract Fiancée" fully generated and verified playing end-to-end
 - Lint: 0 errors. Browser: 0 errors. Mobile responsive.
+
+---
+Task ID: genre-consistency-hooks
+Agent: main
+Task: Add genre presets, character visual consistency, and 5-episode cliffhanger loop
+
+Work Log:
+- Prisma: added visualDescription field to Character model
+- types.ts: added visualDescription to CharacterData + DramaBreakdown; added GENRE_PRESETS (8 genres: CEO Romance, Contract Marriage, Revenge & Comeback, Rebirth, Hidden Identity, Lost Heir, Supernatural, Family Feud) with emoji/label/blurb/tropes
+- ai.ts DIRECTOR_SYSTEM prompt: 3→5 episodes, added "coin-moment" cliffhanger rules (betrayal/slap/kiss-interrupted/identity-exposed), genre hint steering, character "visual" field (concise physical description for consistency)
+- breakdownDrama() now accepts genreHint param {label, tropes}
+- series API: accepts genreId, looks up preset, passes genreHint, persists visualDescription; serialize includes visualDescription
+- scenes image API: prepends "Characters in frame: <visual1>; <visual2>" to each scene prompt based on which characters speak in that scene → face/look consistency across scenes
+- create-view: added genre preset chip selector (8 buttons with emoji), blurb shows on selection, sample button now sets genre=contract-marriage
+- Generated "Return of M" test series (revenge genre): 5 episodes, 4 chars with distinct visuals (Mei Lin: sleek black bob/cold eyes/locket; Mrs. Chen: silver hair/diamonds; David: tousled hair/worn book; Sophia: blonde/sneering), cliffhangers escalating ("take back what's mine" → "lose you again")
+- All 44 media assets generated; browser-verified: library shows both series, create view shows 8 genre chips, series detail shows 5 episodes with hooks, feed plays with dialogue+badges; 0 console errors; 0 lint errors
+
+Stage Summary:
+- Three upgrades complete: (1) 8 genre preset buttons steering LLM tropes, (2) character visual descriptions prepended to scene prompts for face consistency, (3) 5 episodes with stronger "coin-moment" cliffhangers
+- "Return of M" (Revenge & Comeback) fully generated and verified — 5 eps, 4 chars, 28 lines, 15 scenes, 1 cover = 44 assets ready

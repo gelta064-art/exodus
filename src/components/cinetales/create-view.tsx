@@ -16,6 +16,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api-client";
 import type { SeriesData } from "@/lib/types";
+import { GENRE_PRESETS } from "@/lib/types";
 import { generateAllMedia, type GenerateProgress } from "./generator";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ type Phase = "idle" | "structuring" | "generating" | "done" | "error";
 export function CreateView() {
   const [sourceText, setSourceText] = React.useState("");
   const [title, setTitle] = React.useState("");
+  const [genreId, setGenreId] = React.useState<string>("");
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [progress, setProgress] = React.useState<GenerateProgress | null>(null);
   const [created, setCreated] = React.useState<SeriesData | null>(null);
@@ -57,6 +59,7 @@ export function CreateView() {
         body: JSON.stringify({
           sourceText,
           title: title.trim() || undefined,
+          genreId: genreId || undefined,
         }),
       });
       setCreated(series);
@@ -84,6 +87,7 @@ export function CreateView() {
     setPhase("idle");
     setSourceText("");
     setTitle("");
+    setGenreId("");
     setProgress(null);
     setCreated(null);
     setErrorMsg("");
@@ -113,6 +117,38 @@ export function CreateView() {
 
       {/* Form */}
       <div className="space-y-4">
+        {/* Genre presets */}
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">
+            Genre <span className="text-muted-foreground">(steers the tropes)</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {GENRE_PRESETS.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() =>
+                  setGenreId((cur) => (cur === g.id ? "" : g.id))
+                }
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition ring-1",
+                  genreId === g.id
+                    ? "bg-primary text-primary-foreground ring-primary shadow-sm shadow-primary/20"
+                    : "bg-card text-muted-foreground ring-border hover:text-foreground hover:ring-primary/40"
+                )}
+              >
+                <span>{g.emoji}</span>
+                <span>{g.label}</span>
+              </button>
+            ))}
+          </div>
+          {genreId && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {GENRE_PRESETS.find((g) => g.id === genreId)?.blurb}
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="text-sm font-medium mb-1.5 block">
             Title <span className="text-muted-foreground">(optional)</span>
@@ -133,6 +169,7 @@ export function CreateView() {
               onClick={() => {
                 setSourceText(SAMPLE_STORY);
                 setTitle("The Contract Fiancée");
+                setGenreId("contract-marriage");
               }}
               className="text-xs text-primary hover:text-amber-300 transition inline-flex items-center gap-1"
             >
