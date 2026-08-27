@@ -1,5 +1,6 @@
 import ZAI from "z-ai-web-dev-sdk";
-import type { StoryBreakdown } from "./types";
+import type { DramaBreakdown } from "./types";
+import { VOICE_OPTIONS } from "./types";
 
 let _zai: Awaited<ReturnType<typeof ZAI.create>> | null = null;
 
@@ -8,7 +9,7 @@ async function getZai() {
   return _zai;
 }
 
-/** Retry an async fn on rate-limit (429) / transient errors with backoff. */
+/** Retry on 429 / transient errors with exponential backoff. */
 async function withRetry<T>(fn: () => Promise<T>, retries = 4): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -17,9 +18,9 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 4): Promise<T> {
     } catch (err: any) {
       lastErr = err;
       const msg = String(err?.message || err);
-      const is429 = msg.includes("429") || msg.toLowerCase().includes("too many requests");
+      const is429 =
+        msg.includes("429") || msg.toLowerCase().includes("too many requests");
       if (!is429 || attempt === retries) throw err;
-      // exponential backoff: 2s, 4s, 8s, 16s
       const wait = Math.min(2000 * 2 ** attempt, 20000);
       await new Promise((r) => setTimeout(r, wait));
     }
@@ -27,107 +28,103 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 4): Promise<T> {
   throw lastErr;
 }
 
-/** Visual style suffix appended to every scene prompt for cinematic consistency. */
-export const CINEMATIC_STYLE =
-  ", cinematic film still, dramatic atmospheric lighting, rich color grading, highly detailed, depth of field, epic movie scene, 35mm photography, masterpiece";
+/** Vertical 9:16 cinematic style appended to every scene prompt. */
+export const DRAMA_STYLE =
+  ", vertical 9:16 cinematic film still, dramatic lighting, shallow depth of field, rich color grading, highly detailed, emotional close-up or atmospheric wide, movie scene, masterpiece";
 
-const BREAKDOWN_SYSTEM = `You are "CineTales Director", an expert cinematic storyteller. You transform written stories into episodic cinematic series.
+const DIRECTOR_SYSTEM = `You are "Dramai Director", a master creator of viral vertical mini-dramas — the short-form serialized dramas popular on apps like ReelShort and DramaBox.
 
-You will receive a story. Break it into 3 to 4 chapters that flow as a series. For EACH chapter you must produce:
-- "title": a short evocative chapter title (e.g. "Chapter 1: The Awakening"). Keep it under 60 chars.
-- "narration": a vivid second-person or third-person narration of this chapter's events, written to be spoken aloud. It MUST be between 350 and 900 characters. Make it engaging, sensory, and dramatic — like an audiobook narrator.
-- "scenes": an array of 2 to 3 cinematic scenes. Each scene has:
-    - "prompt": a single descriptive sentence for an AI image generator describing the visual of this moment (subject, setting, mood, action, lighting). Do NOT include text/letters in the image. Do NOT mention "cinematic" — that is added automatically. Focus on concrete visual content.
-    - "caption": a very short on-screen caption (under 50 chars) summarizing the moment.
+You transform a given story into an addictive, dialogue-driven mini-drama series.
 
-Also produce for the whole series:
-- "title": a compelling series title (under 60 chars).
-- "description": a one-sentence logline (under 160 chars).
-- "coverPrompt": a single descriptive sentence for a striking cinematic poster/cover image that captures the essence of the whole series. No text in image.
+NON-NEGOTIABLE RULES:
+- Produce exactly 3 episodes.
+- Each episode has 3 scenes. Each scene has 1 to 3 spoken dialogue lines.
+- It is DIALOGUE, not narration. Characters speak TO each other. Show, don't tell. No narrator.
+- Every dialogue line must be SHORT — under 120 characters — and emotionally charged.
+- Each episode must end on a CLIFFHANGER: a dramatic "hook" one-liner (under 90 chars) that makes the viewer desperately want the next episode. Think betrayal revealed, identity exposed, a slap, a kiss interrupted.
+- Identify 2 to 4 characters. Give each a distinct role (protagonist, antagonist, love interest, rival...).
+- Detect the genre from the story (romance, revenge, rebirth, thriller, fantasy, family feud, contract marriage, hidden identity, comeback...).
+- Scene "prompt" must describe a VERTICAL 9:16 frame: who is in frame, setting, mood, camera angle (close-up / over-shoulder / wide), lighting. Concrete and visual. No text/letters in image.
 
-Respond with ONLY a JSON object, no markdown, no explanation. The JSON must match this exact shape:
-{"title": string, "description": string, "coverPrompt": string, "chapters": [{"title": string, "narration": string, "scenes": [{"prompt": string, "caption": string}]}]}`;
+VOICE ASSIGNMENT — assign each character one of these EXACT voice ids, distributing distinct voices:
+${VOICE_OPTIONS.map((v) => `- "${v}"`).join("\n")}
+Give the protagonist "tongtong" if female-leaning or "jam" if male-leaning. Spread the rest so no two main speakers share a voice.
+
+OUTPUT: ONLY a JSON object (no markdown, no prose) matching EXACTLY:
+{"title":string(<=50 chars),"description":string(logline <=110 chars),"genre":string,"coverPrompt":string(vertical poster, no text),"characters":[{"name":string,"role":string,"voice":string}],"episodes":[{"title":string,"hook":string,"scenes":[{"prompt":string,"lines":[{"character":string,"text":string,"emotion":string}]}]}]}
+
+"emotion" is one word: angry, cold, shocked, sad, smug, desperate, tender, mocking, fearful, defiant, amused.`;
 
 function extractJson(text: string): unknown {
-  // Strip markdown code fences if present
   let t = text.trim();
   if (t.startsWith("```")) {
     t = t.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
   }
-  // Find first { and last }
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) {
-    t = t.slice(start, end + 1);
-  }
+  if (start !== -1 && end !== -1 && end > start) t = t.slice(start, end + 1);
   return JSON.parse(t);
 }
 
-/** Break a story into a structured cinematic series using the LLM. */
-export async function breakdownStory(
+/** Have the LLM turn a story into a structured drama series. */
+export async function breakdownDrama(
   sourceText: string,
   hintTitle?: string
-): Promise<StoryBreakdown> {
+): Promise<DramaBreakdown> {
   const zai = await getZai();
-
   const userContent = hintTitle
-    ? `Suggested title (use as inspiration): ${hintTitle}\n\nStory:\n${sourceText}`
+    ? `Suggested title (inspiration only): ${hintTitle}\n\nStory:\n${sourceText}`
     : `Story:\n${sourceText}`;
 
   const completion = await zai.chat.completions.create({
     messages: [
-      { role: "assistant", content: BREAKDOWN_SYSTEM },
+      { role: "assistant", content: DIRECTOR_SYSTEM },
       { role: "user", content: userContent },
     ],
     thinking: { type: "disabled" },
   });
 
   const raw = completion.choices[0]?.message?.content ?? "";
-  let parsed: StoryBreakdown;
+  let parsed: DramaBreakdown;
   try {
-    parsed = extractJson(raw) as StoryBreakdown;
+    parsed = extractJson(raw) as DramaBreakdown;
   } catch {
-    // Retry once with a firmer instruction
     const retry = await zai.chat.completions.create({
       messages: [
-        { role: "assistant", content: BREAKDOWN_SYSTEM },
+        { role: "assistant", content: DIRECTOR_SYSTEM },
         { role: "user", content: userContent },
-        {
-          role: "assistant",
-          content: raw,
-        },
+        { role: "assistant", content: raw },
         {
           role: "user",
           content:
-            "Your previous response was not valid JSON. Respond with ONLY the JSON object now, no other text.",
+            "That was not valid JSON. Reply with ONLY the JSON object now.",
         },
       ],
       thinking: { type: "disabled" },
     });
-    parsed = extractJson(retry.choices[0]?.message?.content ?? "") as StoryBreakdown;
+    parsed = extractJson(retry.choices[0]?.message?.content ?? "") as DramaBreakdown;
   }
 
-  // Validate / clamp
-  if (!parsed.chapters || !Array.isArray(parsed.chapters) || parsed.chapters.length === 0) {
-    throw new Error("LLM did not return any chapters");
-  }
-  for (const ch of parsed.chapters) {
-    if (!ch.scenes || !Array.isArray(ch.scenes)) ch.scenes = [];
-    // Clamp narration length to stay within TTS 1024 char limit
-    if (ch.narration && ch.narration.length > 950) {
-      ch.narration = ch.narration.slice(0, 947).trim() + "…";
+  if (!parsed.episodes?.length) throw new Error("LLM returned no episodes");
+  for (const ep of parsed.episodes) {
+    if (!ep.scenes?.length) ep.scenes = [];
+    for (const sc of ep.scenes) {
+      if (!sc.lines?.length) sc.lines = [];
+      for (const ln of sc.lines) {
+        if (ln.text.length > 280) ln.text = ln.text.slice(0, 277) + "…";
+      }
     }
   }
   return parsed;
 }
 
-/** Generate a single image. Returns a Buffer of the PNG. */
-export async function generateImageBuffer(prompt: string, size: string): Promise<Buffer> {
+/** Generate a vertical 9:16 image. Returns a PNG Buffer. */
+export async function generateImageBuffer(prompt: string): Promise<Buffer> {
   return withRetry(async () => {
     const zai = await getZai();
     const response = await zai.images.generations.create({
       prompt,
-      size: size as "1024x1024",
+      size: "768x1344",
     });
     const base64 = response.data?.[0]?.base64;
     if (!base64) throw new Error("Image generation returned no data");
@@ -135,10 +132,10 @@ export async function generateImageBuffer(prompt: string, size: string): Promise
   });
 }
 
-/** Generate narration audio (WAV) for a text chunk. Returns a Buffer. */
-export async function generateTtsBuffer(
+/** Generate a single dialogue line's audio using the character's voice. */
+export async function generateLineAudio(
   text: string,
-  voice: string = "xiaochen"
+  voice: string
 ): Promise<Buffer> {
   return withRetry(async () => {
     const zai = await getZai();

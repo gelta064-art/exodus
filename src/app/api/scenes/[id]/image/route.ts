@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { generateImageBuffer, CINEMATIC_STYLE } from "@/lib/ai";
+import { generateImageBuffer, DRAMA_STYLE } from "@/lib/ai";
 import { saveMediaBuffer, deleteMediaFile } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -18,10 +18,7 @@ export async function POST(
 
   try {
     await db.scene.update({ where: { id }, data: { status: "pending" } });
-    const buffer = await generateImageBuffer(
-      scene.prompt + CINEMATIC_STYLE,
-      "1344x768"
-    );
+    const buffer = await generateImageBuffer(scene.prompt + DRAMA_STYLE);
     const url = saveMediaBuffer(buffer, "scenes", "png");
 
     if (scene.imageUrl) deleteMediaFile(scene.imageUrl);

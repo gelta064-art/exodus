@@ -1,53 +1,85 @@
-// Shared types for CineTales
+// Shared types for Dramai — AI mini-drama series
 
-export type StoryStatus = "pending" | "ready" | "error";
+export interface CharacterData {
+  id: string;
+  seriesId: string;
+  name: string;
+  role: string;
+  voice: string;
+  accentColor: string;
+  order: number;
+}
+
+export interface LineData {
+  id: string;
+  sceneId: string;
+  order: number;
+  characterName: string;
+  text: string;
+  emotion: string;
+  audioUrl: string | null;
+  status: string;
+}
 
 export interface SceneData {
   id: string;
-  chapterId: string;
+  episodeId: string;
   order: number;
   prompt: string;
-  caption: string;
   imageUrl: string | null;
   status: string;
-  duration: number;
+  lines: LineData[];
 }
 
-export interface ChapterData {
+export interface EpisodeData {
   id: string;
-  storyId: string;
+  seriesId: string;
   order: number;
   title: string;
-  narrationText: string;
-  audioUrl: string | null;
-  audioStatus: string;
+  hook: string;
   scenes: SceneData[];
 }
 
-export interface StoryData {
+export interface SeriesData {
   id: string;
   title: string;
   description: string;
+  genre: string;
   sourceText: string;
   coverPrompt: string;
   coverUrl: string | null;
   coverStatus: string;
-  accentColor: string;
   createdAt: string;
   updatedAt: string;
-  chapters: ChapterData[];
+  characters: CharacterData[];
+  episodes: EpisodeData[];
 }
 
-// Shape returned by the LLM story-breakdown call
-export interface StoryBreakdown {
+/** Shape produced by the LLM drama-director call. */
+export interface DramaBreakdown {
   title: string;
   description: string;
+  genre: string;
   coverPrompt: string;
-  chapters: {
+  characters: { name: string; role: string; voice: string }[];
+  episodes: {
     title: string;
-    narration: string;
-    scenes: { prompt: string; caption: string }[];
+    hook: string;
+    scenes: {
+      prompt: string;
+      lines: { character: string; text: string; emotion: string }[];
+    }[];
   }[];
 }
 
-export type AppView = "library" | "create" | "series" | "player";
+export type AppView = "feed" | "library" | "create" | "series";
+
+export const VOICE_OPTIONS = [
+  "tongtong",
+  "jam",
+  "chuichui",
+  "xiaochen",
+  "luodo",
+  "kazi",
+  "douji",
+] as const;

@@ -15,18 +15,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CineTales — Cinematic Story Series",
+  title: "Dramai — AI Mini-Drama Series",
   description:
-    "Turn any story into an episodic cinematic series. AI-generated visuals and narration bring each chapter to life.",
+    "Turn any story into addictive vertical mini-dramas. AI writes the script, casts distinct voices, paints every scene, and plays it back episode by episode.",
   keywords: [
-    "CineTales",
-    "cinematic stories",
-    "AI storytelling",
-    "audiobook",
-    "image generation",
-    "text to speech",
+    "Dramai",
+    "mini drama",
+    "AI drama",
+    "short drama",
+    "vertical drama",
+    "ReelShort",
+    "DramaBox",
   ],
-  authors: [{ name: "CineTales" }],
+  authors: [{ name: "Dramai" }],
 };
 
 export default function RootLayout({

@@ -1,29 +1,29 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { StoryData } from "@/lib/types";
+import type { SeriesData } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api-client";
 
-export function useStories() {
+export function useSeriesList() {
   const refreshKey = useAppStore((s) => s.refreshKey);
-  return useQuery<StoryData[]>({
-    queryKey: ["stories", refreshKey],
+  return useQuery<SeriesData[]>({
+    queryKey: ["series", refreshKey],
     queryFn: async () => {
-      const res = await api<{ stories: StoryData[] }>("/api/stories");
-      return res.stories;
+      const res = await api<{ series: SeriesData[] }>("/api/series");
+      return res.series;
     },
   });
 }
 
-export function useStory(storyId: string | null) {
+export function useSeries(seriesId: string | null) {
   const refreshKey = useAppStore((s) => s.refreshKey);
-  return useQuery<StoryData>({
-    queryKey: ["story", storyId, refreshKey],
+  return useQuery<SeriesData>({
+    queryKey: ["series", seriesId, refreshKey],
     queryFn: async () => {
-      const res = await api<{ story: StoryData }>(`/api/stories/${storyId}`);
-      return res.story;
+      const res = await api<{ series: SeriesData }>(`/api/series/${seriesId}`);
+      return res.series;
     },
-    enabled: !!storyId,
+    enabled: !!seriesId,
   });
 }

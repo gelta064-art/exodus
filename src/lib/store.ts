@@ -5,29 +5,29 @@ import type { AppView } from "./types";
 
 interface AppState {
   view: AppView;
-  selectedStoryId: string | null;
-  // when entering the player, which chapter to start at (0-indexed)
-  startChapterIndex: number;
-  // refresh token — bumped whenever data changes so views refetch
+  selectedSeriesId: string | null;
+  /** when jumping into the feed, which episode to start at */
+  startEpisodeIndex: number;
+  /** refresh token — bumped whenever data changes so views refetch */
   refreshKey: number;
 
   setView: (view: AppView) => void;
-  openStory: (id: string) => void;
-  openPlayer: (storyId: string, chapterIndex?: number) => void;
+  openSeries: (id: string) => void;
+  openFeed: (seriesId: string, episodeIndex?: number) => void;
   backToLibrary: () => void;
   bumpRefresh: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   view: "library",
-  selectedStoryId: null,
-  startChapterIndex: 0,
+  selectedSeriesId: null,
+  startEpisodeIndex: 0,
   refreshKey: 0,
 
   setView: (view) => set({ view }),
-  openStory: (id) => set({ view: "series", selectedStoryId: id }),
-  openPlayer: (storyId, chapterIndex = 0) =>
-    set({ view: "player", selectedStoryId: storyId, startChapterIndex: chapterIndex }),
-  backToLibrary: () => set({ view: "library", selectedStoryId: null }),
+  openSeries: (id) => set({ view: "series", selectedSeriesId: id }),
+  openFeed: (seriesId, episodeIndex = 0) =>
+    set({ view: "feed", selectedSeriesId: seriesId, startEpisodeIndex: episodeIndex }),
+  backToLibrary: () => set({ view: "library", selectedSeriesId: null }),
   bumpRefresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
 }));

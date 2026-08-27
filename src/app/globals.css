@@ -174,8 +174,8 @@
 .ct-vignette {
   background: radial-gradient(
     ellipse at center,
-    transparent 45%,
-    oklch(0.08 0.01 280 / 0.55) 100%
+    transparent 50%,
+    oklch(0.05 0.01 280 / 0.6) 100%
   );
 }
 
@@ -191,16 +191,72 @@
 .ct-shimmer {
   background: linear-gradient(
     90deg,
-    oklch(0.22 0.01 280) 0%,
-    oklch(0.3 0.02 75) 50%,
-    oklch(0.22 0.01 280) 100%
+    oklch(0.18 0.01 280) 0%,
+    oklch(0.28 0.02 75) 50%,
+    oklch(0.18 0.01 280) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
 
-/* Letterbox bars */
-.ct-letterbox {
-  background: oklch(0.04 0 0);
+/* Vertical feed: scroll-snap between episodes (Reels-style) */
+.ct-feed {
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ct-feed::-webkit-scrollbar {
+  display: none;
+}
+.ct-snap-item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Subtle scale-in for dialogue subtitle */
+@keyframes subtitle-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-subtitle {
+  animation: subtitle-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Bounce-up hint for swipe-to-next */
+@keyframes hint-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+.animate-hint {
+  animation: hint-bounce 1.6s ease-in-out infinite;
+}
+
+/* Pulsing record dot */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
 }
 

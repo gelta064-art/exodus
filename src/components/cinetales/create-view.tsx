@@ -8,27 +8,25 @@ import {
   Loader2,
   Check,
   AlertCircle,
-  Film,
-  Volume2,
+  Clapperboard,
+  Mic2,
   ImageIcon,
   ArrowLeft,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api-client";
-import type { StoryData } from "@/lib/types";
-import { generateAllMedia, type GenerateProgress, type MediaTask } from "./generator";
+import type { SeriesData } from "@/lib/types";
+import { generateAllMedia, type GenerateProgress } from "./generator";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const SAMPLE_STORY = `In a forgotten village at the edge of the world, there lived an old lighthouse keeper named Eira. Every night she lit the great lamp to guide ships safely past the jagged coast. But one stormy evening, the light flickered and died, and from the crashing waves rose a creature of starlight and salt — a being who called itself the Last Star.
+const SAMPLE_STORY = `Maya was the invisible intern everyone ignored — until the company's cold, ruthless CEO, Daniel Vale, suddenly announced her as his fake fiancée to block an arranged marriage his board was forcing on him.
 
-It had fallen from the sky, the Star told Eira, and without its place in the heavens the constellations themselves were unraveling. Only the keeper of a light could help it return. So Eira packed her lantern, locked the lighthouse door, and set out across the darkening sea in a tiny wooden boat.
+She hated him. He barely noticed her. But the contract was signed: three months, pretend to be in love, then walk away rich.
 
-The journey was long and strange. They sailed through forests of kelp that glowed like emeralds, past islands where the rocks whispered old secrets, and beneath skies that cracked open to show other worlds. The Star grew dimmer with each passing night, and Eira began to fear they would be too late.
+The problem? Daniel's arranged fiancée, the elegant and dangerous Vivian, isn't about to lose. And Maya's old childhood friend Leo — now a rival executive — knows a secret about Maya's past that could shatter everything.
 
-At last they reached the Ends of the Water — a place where the sea poured upward into the sky like a great silver fountain. There, Eira made her choice. She gave the Star her lantern's flame, the last light she had, and watched it rise, burning brighter and brighter until it took its place among the stars.
-
-When Eira returned home, the lighthouse lamp would never light again. But on clear nights, a single brilliant star hangs just above her tower, and no ship is ever lost upon the coast. They say if you listen to the wind there, you can still hear the Star whispering its thanks.`;
+As board meetings become battlegrounds and gala nights turn into war zones, the line between fake and real starts to blur. Daniel begins to see Maya. Maya begins to trust Daniel. And Vivian begins to plot.`;
 
 type Phase = "idle" | "structuring" | "generating" | "done" | "error";
 
@@ -37,11 +35,11 @@ export function CreateView() {
   const [title, setTitle] = React.useState("");
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [progress, setProgress] = React.useState<GenerateProgress | null>(null);
-  const [createdStory, setCreatedStory] = React.useState<StoryData | null>(null);
+  const [created, setCreated] = React.useState<SeriesData | null>(null);
   const [errorMsg, setErrorMsg] = React.useState("");
 
   const backToLibrary = useAppStore((s) => s.backToLibrary);
-  const openStory = useAppStore((s) => s.openStory);
+  const openFeed = useAppStore((s) => s.openFeed);
   const bumpRefresh = useAppStore((s) => s.bumpRefresh);
 
   const charCount = sourceText.length;
@@ -54,21 +52,22 @@ export function CreateView() {
     setProgress(null);
 
     try {
-      // Step 1 — LLM breaks the story into structure
-      const { story } = await api<{ story: StoryData }>("/api/stories", {
+      const { series } = await api<{ series: SeriesData }>("/api/series", {
         method: "POST",
-        body: JSON.stringify({ sourceText, title: title.trim() || undefined }),
+        body: JSON.stringify({
+          sourceText,
+          title: title.trim() || undefined,
+        }),
       });
-      setCreatedStory(story);
+      setCreated(series);
       bumpRefresh();
 
-      // Step 2 — generate all media with progress
       setPhase("generating");
-      await generateAllMedia(story, (p) => setProgress(p));
+      await generateAllMedia(series, (p) => setProgress(p));
       bumpRefresh();
       setPhase("done");
-      toast.success("Cinematic series ready!", {
-        description: `"${story.title}" — ${story.chapters.length} chapters generated.`,
+      toast.success("Drama series ready!", {
+        description: `"${series.title}" — ${series.episodes.length} episodes.`,
       });
     } catch (err) {
       console.error(err);
@@ -77,10 +76,8 @@ export function CreateView() {
     }
   }
 
-  function handleViewSeries() {
-    if (createdStory) {
-      openStory(createdStory.id);
-    }
+  function handlePlay() {
+    if (created) openFeed(created.id, 0);
   }
 
   function handleReset() {
@@ -88,56 +85,54 @@ export function CreateView() {
     setSourceText("");
     setTitle("");
     setProgress(null);
-    setCreatedStory(null);
+    setCreated(null);
     setErrorMsg("");
   }
 
   return (
-    <div className="mx-auto max-w-3xl w-full px-4 sm:px-6 py-8 sm:py-12">
+    <div className="mx-auto max-w-md w-full px-4 py-6">
       <button
         onClick={backToLibrary}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-6"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-5"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to library
+        Library
       </button>
 
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 ring-1 ring-primary/20 px-3 py-1 text-xs font-medium text-primary mb-4">
+      <div className="mb-6">
+        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 ring-1 ring-primary/20 px-3 py-1 text-xs font-medium text-primary mb-3">
           <Wand2 className="h-3.5 w-3.5" />
-          New Series
+          New Drama
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          Tell me a story
-        </h1>
-        <p className="mt-3 text-muted-foreground">
-          Paste any story below. Our AI director will split it into chapters,
-          paint a cinematic scene for each moment, and narrate every word.
+        <h1 className="text-2xl font-bold tracking-tight">Create a mini-drama</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Paste any story. Our AI director writes the script, casts voices, paints
+          every scene, and turns it into swipeable episodes.
         </p>
       </div>
 
       {/* Form */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div>
-          <label className="text-sm font-medium mb-2 block">
+          <label className="text-sm font-medium mb-1.5 block">
             Title <span className="text-muted-foreground">(optional)</span>
           </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. The Lighthouse Keeper's Star"
+            placeholder="e.g. The Contract Fiancée"
             maxLength={120}
-            className="w-full rounded-xl bg-card border border-border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition"
+            className="w-full rounded-xl bg-card border border-border px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition"
           />
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium">Your story</label>
             <button
               onClick={() => {
                 setSourceText(SAMPLE_STORY);
-                setTitle("The Lighthouse Keeper's Star");
+                setTitle("The Contract Fiancée");
               }}
               className="text-xs text-primary hover:text-amber-300 transition inline-flex items-center gap-1"
             >
@@ -148,13 +143,15 @@ export function CreateView() {
           <textarea
             value={sourceText}
             onChange={(e) => setSourceText(e.target.value)}
-            placeholder="Once upon a time, in a village at the edge of the world..."
-            rows={12}
-            className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition resize-y ct-scroll"
+            placeholder="A princess in disguise, a CEO seeking revenge, a love that defies a family feud…"
+            rows={9}
+            className="w-full rounded-xl bg-card border border-border px-3.5 py-3 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-primary/40 transition resize-y ct-scroll"
           />
-          <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{charCount} characters</span>
-            <span>{charCount < 40 ? `${40 - charCount} more needed` : "Ready"}</span>
+          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{charCount} chars</span>
+            <span>
+              {charCount < 40 ? `${40 - charCount} more` : "Ready"}
+            </span>
           </div>
         </div>
 
@@ -171,25 +168,25 @@ export function CreateView() {
           {phase === "idle" && (
             <>
               <Sparkles className="h-4 w-4" />
-              Create Cinematic Series
+              Generate Drama
             </>
           )}
           {phase === "structuring" && (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Analyzing your story…
+              Writing the script…
             </>
           )}
           {phase === "generating" && (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Producing the cinema…
+              Producing episodes…
             </>
           )}
           {phase === "done" && (
             <>
               <Check className="h-4 w-4" />
-              Series Ready — Watch Now
+              Watch Now
             </>
           )}
           {phase === "error" && (
@@ -201,18 +198,17 @@ export function CreateView() {
         </button>
       </div>
 
-      {/* Generation overlay */}
       <AnimatePresence>
         {(phase === "structuring" ||
           phase === "generating" ||
           phase === "done" ||
           phase === "error") && (
-          <GenerationPanel
+          <GenPanel
             phase={phase}
             progress={progress}
-            story={createdStory}
+            series={created}
             errorMsg={errorMsg}
-            onViewSeries={handleViewSeries}
+            onPlay={handlePlay}
             onReset={handleReset}
           />
         )}
@@ -221,34 +217,32 @@ export function CreateView() {
   );
 }
 
-function GenerationPanel({
+function GenPanel({
   phase,
   progress,
-  story,
+  series,
   errorMsg,
-  onViewSeries,
+  onPlay,
   onReset,
 }: {
   phase: Phase;
   progress: GenerateProgress | null;
-  story: StoryData | null;
+  series: SeriesData | null;
   errorMsg: string;
-  onViewSeries: () => void;
+  onPlay: () => void;
   onReset: () => void;
 }) {
   const steps = [
-    { key: "structuring", label: "Breaking story into chapters", icon: Film },
-    { key: "generating", label: "Painting scenes & narration", icon: ImageIcon },
+    { key: "structuring", label: "Writing script & casting voices", icon: Clapperboard },
+    { key: "generating", label: "Painting scenes & recording dialogue", icon: Mic2 },
     { key: "done", label: "Series complete", icon: Check },
   ];
-
   const phaseIndex =
     phase === "structuring" ? 0 : phase === "generating" ? 1 : phase === "done" ? 2 : 0;
-
   const percent = progress
     ? Math.round((progress.done / Math.max(progress.total, 1)) * 100)
     : phase === "structuring"
-    ? 8
+    ? 6
     : 0;
 
   return (
@@ -256,29 +250,40 @@ function GenerationPanel({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="mt-8"
+      className="mt-6"
     >
       <div className="rounded-2xl bg-card ring-1 ring-border/60 overflow-hidden">
-        {/* Header */}
-        <div className="p-5 border-b border-border/60">
-          {story && (
-            <h3 className="font-semibold text-lg leading-tight">{story.title}</h3>
+        <div className="p-4 border-b border-border/60">
+          {series && (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                  {series.genre}
+                </span>
+              </div>
+              <h3 className="font-semibold text-base leading-tight">
+                {series.title}
+              </h3>
+            </>
           )}
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {phase === "structuring" && "Our AI director is reading your story…"}
-            {phase === "generating" && "Generating cinematic assets in parallel…"}
-            {phase === "done" && "Your series is ready to premiere."}
+          <p className="text-xs text-muted-foreground mt-1">
+            {phase === "structuring" && "AI director is writing your drama…"}
+            {phase === "generating" && "Generating scenes & dialogue in parallel…"}
+            {phase === "done" && "Your drama is ready to premiere."}
             {phase === "error" && "Something went wrong."}
           </p>
 
-          {/* progress bar */}
           {(phase === "structuring" || phase === "generating") && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                <span>{phase === "structuring" ? "Analyzing" : `${progress?.done ?? 0} / ${progress?.total ?? 0} assets`}</span>
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                <span>
+                  {phase === "structuring"
+                    ? "Analyzing"
+                    : `${progress?.done ?? 0} / ${progress?.total ?? 0}`}
+                </span>
                 <span>{percent}%</span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <motion.div
                   className="h-full bg-gradient-to-r from-primary to-amber-300"
                   animate={{ width: `${percent}%` }}
@@ -289,40 +294,39 @@ function GenerationPanel({
           )}
 
           {phase === "error" && (
-            <div className="mt-4 rounded-lg bg-destructive/10 ring-1 ring-destructive/30 px-4 py-3 text-sm text-destructive">
+            <div className="mt-3 rounded-lg bg-destructive/10 ring-1 ring-destructive/30 px-3 py-2 text-xs text-destructive">
               {errorMsg}
             </div>
           )}
         </div>
 
-        {/* Steps */}
         {phase !== "error" && (
-          <div className="p-5 space-y-3">
+          <div className="p-4 space-y-2.5">
             {steps.map((s, i) => {
               const Icon = s.icon;
               const state =
                 i < phaseIndex ? "done" : i === phaseIndex ? "active" : "pending";
               return (
-                <div key={s.key} className="flex items-center gap-3">
+                <div key={s.key} className="flex items-center gap-2.5">
                   <span
                     className={cn(
-                      "grid place-items-center h-8 w-8 rounded-full ring-1 transition",
+                      "grid place-items-center h-7 w-7 rounded-full ring-1 transition shrink-0",
                       state === "done" && "bg-emerald-500/20 ring-emerald-400/40 text-emerald-300",
                       state === "active" && "bg-primary/20 ring-primary/40 text-primary",
                       state === "pending" && "bg-muted ring-border text-muted-foreground"
                     )}
                   >
                     {state === "done" ? (
-                      <Check className="h-4 w-4" />
+                      <Check className="h-3.5 w-3.5" />
                     ) : state === "active" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5" />
                     )}
                   </span>
                   <span
                     className={cn(
-                      "text-sm",
+                      "text-xs",
                       state === "pending" ? "text-muted-foreground" : "text-foreground"
                     )}
                   >
@@ -332,24 +336,22 @@ function GenerationPanel({
               );
             })}
 
-            {/* Asset breakdown while generating */}
-            {phase === "generating" && story && progress && (
-              <div className="mt-4 pt-4 border-t border-border/60">
-                <ChapterProgress story={story} progress={progress} />
+            {phase === "generating" && series && progress && (
+              <div className="mt-3 pt-3 border-t border-border/60">
+                <EpisodeProgress series={series} progress={progress} />
               </div>
             )}
           </div>
         )}
 
-        {/* Done actions */}
-        {phase === "done" && story && (
-          <div className="p-5 pt-0">
+        {phase === "done" && series && (
+          <div className="p-4 pt-0">
             <button
-              onClick={onViewSeries}
+              onClick={onPlay}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 text-sm font-semibold shadow-lg shadow-primary/20 hover:brightness-110 transition"
             >
-              <Film className="h-4 w-4" />
-              Go to Series
+              <Clapperboard className="h-4 w-4" />
+              Watch the drama
             </button>
             <button
               onClick={onReset}
@@ -361,7 +363,7 @@ function GenerationPanel({
         )}
 
         {phase === "error" && (
-          <div className="p-5 pt-0">
+          <div className="p-4 pt-0">
             <button
               onClick={onReset}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 text-sm font-semibold hover:brightness-110 transition"
@@ -375,35 +377,36 @@ function GenerationPanel({
   );
 }
 
-function ChapterProgress({
-  story,
+function EpisodeProgress({
+  series,
   progress,
 }: {
-  story: StoryData;
+  series: SeriesData;
   progress: GenerateProgress;
 }) {
-  // Compute per-chapter readiness using the live `completed` set
-  const rows = story.chapters.map((ch, ci) => {
-    const total = 1 + ch.scenes.length; // audio + scenes
+  const rows = series.episodes.map((ep, ei) => {
+    const total = ep.scenes.length + ep.scenes.reduce((a, s) => a + s.lines.length, 0);
     const done =
-      (ch.audioStatus === "ready" || progress.completed.includes(`audio-${ch.id}`) ? 1 : 0) +
-      ch.scenes.filter(
-        (sc) => sc.status === "ready" || progress.completed.includes(`scene-${sc.id}`)
-      ).length;
-    return { ci, title: ch.title, done, total };
+      ep.scenes.filter((s) => s.status === "ready" || progress.completed.includes(`scene-${s.id}`)).length +
+      ep.scenes.reduce(
+        (a, s) =>
+          a + s.lines.filter((l) => l.status === "ready" || progress.completed.includes(`line-${l.id}`)).length,
+        0
+      );
+    return { ei, title: ep.title, done, total };
   });
 
   return (
-    <div className="space-y-2 max-h-48 overflow-y-auto ct-scroll pr-1">
+    <div className="space-y-1.5 max-h-40 overflow-y-auto ct-scroll pr-1">
       {rows.map((r) => (
-        <div key={r.ci} className="flex items-center gap-3 text-xs">
-          <span className="grid place-items-center h-6 w-6 rounded-md bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
-            {r.ci + 1}
+        <div key={r.ei} className="flex items-center gap-2 text-[11px]">
+          <span className="grid place-items-center h-5 w-5 rounded bg-primary/10 text-primary text-[9px] font-semibold shrink-0">
+            {r.ei + 1}
           </span>
           <span className="flex-1 truncate text-muted-foreground">{r.title}</span>
-          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <Volume2 className="h-3 w-3" />
-            <ImageIcon className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <ImageIcon className="h-2.5 w-2.5" />
+            <Mic2 className="h-2.5 w-2.5" />
             {r.done}/{r.total}
           </span>
         </div>

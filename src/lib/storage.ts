@@ -3,7 +3,7 @@ import path from "path";
 
 const STORAGE_ROOT = path.join(process.cwd(), "public", "storage");
 
-const DIRS = ["covers", "audio", "scenes"] as const;
+const DIRS = ["covers", "scenes", "lines"] as const;
 
 export function ensureStorageDirs() {
   for (const dir of DIRS) {

@@ -38,3 +38,26 @@ Stage Summary:
 - Full pipeline verified end-to-end with "Pip's Reawakening" (4 chapters, 8 scenes, 4 audios, 1 cover = 13 assets all ready).
 - Agent Browser verification: library/series/player/create all render; player audio plays, scenes sync & advance, controls auto-hide, chapter switching works; footer sticks to bottom; no console errors.
 - Lint: 0 errors. Concurrency tuned to 2 with 429 backoff retry to respect API rate limits.
+
+---
+Task ID: drama-rebuild
+Agent: main
+Task: Rebuild Dramai (AI mini-drama app) after environment revert
+
+Work Log:
+- Previous session's drama pivot was lost (environment reverted to CineTales state)
+- Redid entire drama pivot cleanly: prisma schema (Series/Character/Episode/Scene/Line), types, ai.ts (breakdownDrama + DRAMA_STYLE + generateImageBuffer + generateLineAudio), storage (covers/scenes/lines), store (feed view), hooks, generator, progress
+- Cleaned up old CineTales files (api/stories, api/chapters, player-view.tsx)
+- Fixed scenes API route (CINEMATIC_STYLE → DRAMA_STYLE, removed size param)
+- Rewrote page.tsx (mobile app shell with floating bottom nav), layout.tsx (Dramai metadata), globals.css (drama CSS: ct-feed scroll-snap, animate-subtitle, animate-hint, animate-pulse-dot)
+- Rewrote library-view, create-view, series-view for drama model
+- Verified feed-view.tsx survived intact from previous session
+- Pushed schema to DB (force-reset), generated Prisma client
+- Created test series "The Contract Fiancée" (4 chars: Maya/tongtong, Daniel/jam, Vivian/xiaochen, Leo/luodo; 3 episodes with cliffhanger hooks)
+- Generated all 28 media assets (1 cover + 9 scenes + 18 dialogue lines) via bun script with concurrency 2 + 429 retry
+- Agent Browser verification: library renders series card with READY badge; series view shows cover/cast/episodes; feed player plays audio with dialogue subtitles + character emotion badges + progress dots advancing (✓✓✓▶··); mobile responsive at 390px; 0 console errors
+
+Stage Summary:
+- Dramai is a fully functional AI mini-drama app: paste story → LLM writes dialogue script with cliffhangers + assigns character voices → image gen paints 9:16 scenes → TTS generates per-line dialogue audio → Reels-style vertical swipe player with Ken Burns, crossfades, subtitle animations, auto-advance, and cliffhanger hooks
+- Test series "The Contract Fiancée" fully generated and verified playing end-to-end
+- Lint: 0 errors. Browser: 0 errors. Mobile responsive.

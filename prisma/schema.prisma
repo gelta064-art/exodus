@@ -1,4 +1,4 @@
-// CineTales — Cinematic Story Series
+// Dramai — AI Mini-Drama Series (vertical short-form dramas)
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,45 +8,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Story {
-  id          String    @id @default(cuid())
+model Series {
+  id          String      @id @default(cuid())
   title       String
   description String
+  genre       String
   sourceText  String
   coverPrompt String
   coverUrl    String?
-  coverStatus String    @default("pending") // pending | ready | error
-  accentColor String    @default("amber")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  chapters    Chapter[]
+  coverStatus String      @default("pending")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  characters  Character[]
+  episodes    Episode[]
 }
 
-model Chapter {
-  id            String   @id @default(cuid())
-  storyId       String
-  story         Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  order         Int
-  title         String
-  narrationText String
-  audioUrl      String?
-  audioStatus   String   @default("pending") // pending | ready | error
-  createdAt     DateTime @default(now())
-  scenes        Scene[]
+model Character {
+  id          String  @id @default(cuid())
+  seriesId    String
+  series      Series  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  name        String
+  role        String
+  voice       String
+  accentColor String  @default("amber")
+  order       Int     @default(0)
 
-  @@index([storyId])
+  @@index([seriesId])
+}
+
+model Episode {
+  id        String   @id @default(cuid())
+  seriesId  String
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  order     Int
+  title     String
+  hook      String
+  createdAt DateTime @default(now())
+  scenes    Scene[]
+
+  @@index([seriesId])
 }
 
 model Scene {
   id        String  @id @default(cuid())
-  chapterId String
-  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   order     Int
   prompt    String
-  caption   String
   imageUrl  String?
-  status    String  @default("pending") // pending | ready | error
-  duration  Int     @default(8000)
+  status    String  @default("pending")
+  lines     Line[]
 
-  @@index([chapterId])
+  @@index([episodeId])
+}
+
+model Line {
+  id            String  @id @default(cuid())
+  sceneId       String
+  scene         Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  order         Int
+  characterName String
+  text          String
+  emotion       String
+  audioUrl      String?
+  status        String  @default("pending")
+
+  @@index([sceneId])
 }
