@@ -122,3 +122,23 @@ Stage Summary:
 - Library now looks like NaturalReader: bookshelf grid of covers with hover-to-play, shelf filters, Currently Reading featured row, search
 - Goodreads social features working: shelves (3), star ratings (interactive 1-5), reviews (composer), community activity feed (10 seeded entries with avatars/timestamps), trending, stats
 - Browser-verified: library grid + filters + featured row render; community feed shows activity with timeAgo; reader social bar shows shelf/rating/review controls with 5 stars filled; 0 console errors; 0 lint errors; mobile responsive
+
+---
+Task ID: audible-layout
+Agent: main
+Task: Redesign Inkvine to Audible-style layout (per Luna's reference screenshot)
+
+Work Log:
+- Used VLM to analyze the reference screenshot: identified Audible layout (left sidebar nav, horizontal carousels with UPPERCASE headers, book cards with cover+title+By author+kebab, fixed Now Playing mini-player bar at bottom)
+- globals.css: dark theme shifted from warm 280-hue to deep navy 260-hue (Audible-style), darker sidebar (oklch 0.11)
+- store.ts: added NowPlaying state (docId/title/author/coverUrl/chunkIndex/totalChunks/timeLeftLabel/speed/isPlaying) + setNowPlaying/clearNowPlaying
+- types.ts: added "discover" to AppView
+- page.tsx REWRITE: left sidebar (w-56/60, dark bg, Home/Discover/Community/Voices nav + Upload button at bottom); main content area to the right; mobile top bar (md:hidden) with icon nav; NowPlayingBar shown when not immersive + nowPlaying set
+- now-playing-bar.tsx: fixed bottom mini-player (thumbnail, title, Chapter X of Y, timeLeft left, speed, sleep timer icon, play/pause circle button, close X) — Audible-style
+- discover-view.tsx: "Find your next listen" with carousels (Trending in your community, Recommended for you) + Browse by genre grid (8 genres with emoji + counts)
+- library-view.tsx REWRITE (Audible-style): "My Library" header + search; horizontal carousels with UPPERCASE headers (CONTINUE LISTENING with featured ContinueCard showing progress bar + voice + Resume, WANT TO READ, FINISHED, ALL BOOKS); BookCard with cover + title + "By author" + kebab menu (delete); hover play overlay
+- reader-view.tsx: added NowPlaying sync useEffect (updates store on doc/index/play/speed change so mini-bar reflects state)
+
+Stage Summary:
+- Inkvine now looks like Audible: left sidebar nav, deep navy theme, horizontal carousel rows with uppercase headers, book cards with covers + kebab menus, fixed Now Playing mini-player bar at bottom
+- Browser-verified: sidebar (Home/Discover/Community/Voices + Upload), carousels (CONTINUE LISTENING/WANT TO READ/FINISHED/ALL BOOKS), now-playing bar shows "The Lighthouse Keeper's Daughter Chapter 1 of 4 · 0m left · 1x" with cover img + play btn, Discover view with trending/recommended/genres; mobile responsive (top bar on mobile); 0 console errors; 0 lint errors

@@ -58,7 +58,7 @@ export interface ActivityData {
   createdAt: string;
 }
 
-export type AppView = "library" | "reader" | "voices" | "community" | "upload";
+export type AppView = "library" | "reader" | "voices" | "community" | "discover" | "upload";
 
 export const VOICE_OPTIONS = [
   "tongtong",

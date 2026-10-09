@@ -34,6 +34,7 @@ export function ReaderView() {
   const docId = useAppStore((s) => s.selectedDocId);
   const back = useAppStore((s) => s.backToLibrary);
   const bumpRefresh = useAppStore((s) => s.bumpRefresh);
+  const setNowPlaying = useAppStore((s) => s.setNowPlaying);
   const { data: doc, isLoading } = useDocument(docId);
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -45,11 +46,30 @@ export function ReaderView() {
   const [speed, setSpeed] = React.useState(1);
   const [generating, setGenerating] = React.useState(false);
   const [progress, setProgress] = React.useState<GenerateProgress | null>(null);
+  const [timeLeft, setTimeLeft] = React.useState(0);
 
   const chunks = doc?.chunks ?? [];
   const current = chunks[currentIndex];
   const ready = chunks.filter((c) => c.status === "ready").length;
   const allReady = ready === chunks.length && chunks.length > 0;
+
+  // Sync "now playing" to the global store (for the mini-player bar)
+  React.useEffect(() => {
+    if (!doc) return;
+    const mins = Math.max(0, Math.round((doc.charCount / 900) * 0.12 * (1 - doc.progress)));
+    const timeLabel = mins > 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+    setNowPlaying({
+      docId: doc.id,
+      title: doc.title,
+      author: doc.author,
+      coverUrl: doc.coverUrl,
+      chunkIndex: currentIndex,
+      totalChunks: chunks.length,
+      timeLeftLabel: timeLabel,
+      speed,
+      isPlaying,
+    });
+  }, [doc, currentIndex, isPlaying, speed, chunks.length, setNowPlaying]);
 
   // Reset index when doc changes
   React.useEffect(() => {
