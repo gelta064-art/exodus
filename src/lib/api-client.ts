@@ -1,6 +1,6 @@
 "use client";
 
-/** Small fetch wrapper for CineTales API calls. */
+/** Small fetch wrapper for Inkvine API calls. */
 export async function api<T>(
   input: string,
   init?: RequestInit
@@ -22,7 +22,6 @@ export async function api<T>(
     }
     throw new Error(msg);
   }
-  // Some endpoints return non-JSON (e.g. none) — handle gracefully
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) return (await res.json()) as T;
   return undefined as unknown as T;

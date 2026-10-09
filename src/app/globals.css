@@ -123,7 +123,7 @@
   }
 }
 
-/* Cinematic scrollbar */
+/* Inkvine scrollbar — subtle, reader-friendly */
 .ct-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -132,54 +132,43 @@
   background: transparent;
 }
 .ct-scroll::-webkit-scrollbar-thumb {
-  background: oklch(0.4 0.02 75 / 0.5);
+  background: oklch(0.4 0.01 75 / 0.4);
   border-radius: 9999px;
 }
 .ct-scroll::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.6 0.05 75 / 0.7);
+  background: oklch(0.55 0.02 75 / 0.6);
 }
 
-/* Ken Burns slow zoom/pan for cinematic scene stills */
-@keyframes kenburns {
+/* Soft fade-in for content swaps */
+@keyframes fade-in {
   0% {
-    transform: scale(1.05) translate(0%, 0%);
-  }
-  50% {
-    transform: scale(1.18) translate(-2%, -1.5%);
+    opacity: 0;
+    transform: translateY(6px);
   }
   100% {
-    transform: scale(1.05) translate(0%, 0%);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-.animate-kenburns {
-  animation: kenburns 14s ease-in-out infinite;
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
 }
 
-@keyframes kenburns-alt {
-  0% {
-    transform: scale(1.12) translate(-1%, 1%);
+/* Waveform pulse for the "now playing" indicator */
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.4);
   }
   50% {
-    transform: scale(1.2) translate(2%, -1%);
-  }
-  100% {
-    transform: scale(1.12) translate(-1%, 1%);
+    transform: scaleY(1);
   }
 }
-.animate-kenburns-alt {
-  animation: kenburns-alt 16s ease-in-out infinite;
+.animate-wave {
+  animation: wave 0.9s ease-in-out infinite;
 }
 
-/* Soft cinematic vignette overlay */
-.ct-vignette {
-  background: radial-gradient(
-    ellipse at center,
-    transparent 50%,
-    oklch(0.05 0.01 280 / 0.6) 100%
-  );
-}
-
-/* Film grain shimmer for loading placeholders */
+/* Shimmer for loading placeholders */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -191,60 +180,15 @@
 .ct-shimmer {
   background: linear-gradient(
     90deg,
-    oklch(0.18 0.01 280) 0%,
-    oklch(0.28 0.02 75) 50%,
-    oklch(0.18 0.01 280) 100%
+    oklch(0.2 0.008 75) 0%,
+    oklch(0.28 0.015 75) 50%,
+    oklch(0.2 0.008 75) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
 
-/* Vertical feed: scroll-snap between episodes (Reels-style) */
-.ct-feed {
-  scroll-snap-type: y mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.ct-feed::-webkit-scrollbar {
-  display: none;
-}
-.ct-snap-item {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-/* Subtle scale-in for dialogue subtitle */
-@keyframes subtitle-in {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-.animate-subtitle {
-  animation: subtitle-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Bounce-up hint for swipe-to-next */
-@keyframes hint-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translateY(-6px);
-    opacity: 1;
-  }
-}
-.animate-hint {
-  animation: hint-bounce 1.6s ease-in-out infinite;
-}
-
-/* Pulsing record dot */
+/* Pulsing record dot for Voice Studio */
 @keyframes pulse-dot {
   0%,
   100% {
@@ -258,5 +202,17 @@
 }
 .animate-pulse-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* Reading text highlight (current chunk being narrated) */
+.reading-highlight {
+  background: linear-gradient(
+    120deg,
+    oklch(0.82 0.15 75 / 0.18) 0%,
+    oklch(0.82 0.15 75 / 0.08) 100%
+  );
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
 }
 

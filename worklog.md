@@ -81,3 +81,23 @@ Work Log:
 Stage Summary:
 - Three upgrades complete: (1) 8 genre preset buttons steering LLM tropes, (2) character visual descriptions prepended to scene prompts for face consistency, (3) 5 episodes with stronger "coin-moment" cliffhangers
 - "Return of M" (Revenge & Comeback) fully generated and verified — 5 eps, 4 chars, 28 lines, 15 scenes, 1 cover = 44 assets ready
+
+---
+Task ID: inkvine-build
+Agent: main
+Task: Build Inkvine — Voice-Cloned Audiobook Reader (per Luna's spec)
+
+Work Log:
+- Replaced Dramai with Inkvine: voice-cloned audiobook reader
+- Prisma schema: Document (title/fileName/fileType/rawText/charCount/cover/voiceId/progress/lastChunk) + VoiceProfile + AudioChunk
+- parser.ts: parseDocument() supports TXT/MD (utf-8), EPUB (epub2, spine-order chapter extraction + htmlToText), PDF (pdf-parse); cleanText() + chunkText() (paragraph-aware, ≤950 chars, sentence-splitting for long paragraphs)
+- ai.ts: generateTtsBuffer() (429 retry), generateCoverBuffer() (vertical book cover), generateDocMeta() (LLM writes title+coverPrompt from excerpt)
+- API routes: documents (GET list / POST upload+parse+chunk / PATCH progress / DELETE), documents/[id]/cover (POST), chunks/[id]/audio (POST per-chunk TTS), voices (GET seeds 7 defaults / POST create custom)
+- Frontend: library-view (NaturalReader-style: top stats, featured media card with cover/Listen/progress, document list with file-type icons + voice dots + delete), upload-view (drag-drop + voice selector + parse flow), reader-view (text chunks with reading-highlight, sticky player with play/skip/speed-cycle 0.5x-2.5x, chunk dots, generate-all-audio button), voice-studio-view (voice profile cards with waveforms + create-custom modal + cloning-pipeline concept note)
+- globals.css: Inkvine scrollbar, fade-in, wave animation, shimmer, pulse-dot, reading-highlight
+- Test doc "The Lighthouse Keeper's Daughter.txt" uploaded: 2356 chars → 4 chunks → cover + 4 audio generated; reader plays with audio time=4 paused=false, current chunk highlighted; speed control cycles; Voice Studio shows 7 profiles + create modal
+
+Stage Summary:
+- Inkvine fully functional: upload EPUB/PDF/TXT → parse → chunk → TTS narrate → reader with variable speed + text highlight + chunk navigation
+- 7 voice profiles (TongTong, Jam, ChuiChui, XiaoChen, LuoDo, Kazi, DouJi) + custom profile creation
+- Browser-verified: library, reader (audio plays, highlight works), voice studio all render; 0 console errors; 0 lint errors

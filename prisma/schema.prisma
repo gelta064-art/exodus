@@ -1,4 +1,4 @@
-// Dramai — AI Mini-Drama Series (vertical short-form dramas)
+// Inkvine — Voice-Cloned Audiobook Reader
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,71 +8,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Series {
-  id          String      @id @default(cuid())
+model Document {
+  id          String       @id @default(cuid())
   title       String
-  description String
-  genre       String
-  sourceText  String
-  coverPrompt String
+  fileName    String
+  fileType    String // txt | epub | pdf
+  rawText     String
+  charCount   Int
   coverUrl    String?
-  coverStatus String      @default("pending")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  characters  Character[]
-  episodes    Episode[]
+  coverPrompt String?
+  voiceId     String       @default("tongtong")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  chunks      AudioChunk[]
+  progress    Float        @default(0) // 0..1 playback progress
+  lastChunk   Int          @default(0)
 }
 
-model Character {
-  id          String  @id @default(cuid())
-  seriesId    String
-  series      Series  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+model VoiceProfile {
+  id          String   @id @default(cuid())
   name        String
-  role        String
-  voice       String
-  visualDescription String @default("")
-  accentColor String  @default("amber")
-  order       Int     @default(0)
-
-  @@index([seriesId])
+  voiceId     String   // maps to z-ai TTS voice
+  description String
+  accentColor String   @default("amber")
+  gender      String   @default("neutral")
+  language    String   @default("en")
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 
-model Episode {
-  id        String   @id @default(cuid())
-  seriesId  String
-  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
-  order     Int
-  title     String
-  hook      String
-  createdAt DateTime @default(now())
-  scenes    Scene[]
+model AudioChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  order      Int
+  text       String
+  charCount  Int
+  audioUrl   String?
+  status     String   @default("pending") // pending | ready | error
+  createdAt  DateTime @default(now())
 
-  @@index([seriesId])
-}
-
-model Scene {
-  id        String  @id @default(cuid())
-  episodeId String
-  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  order     Int
-  prompt    String
-  imageUrl  String?
-  status    String  @default("pending")
-  lines     Line[]
-
-  @@index([episodeId])
-}
-
-model Line {
-  id            String  @id @default(cuid())
-  sceneId       String
-  scene         Scene   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  order         Int
-  characterName String
-  text          String
-  emotion       String
-  audioUrl      String?
-  status        String  @default("pending")
-
-  @@index([sceneId])
+  @@index([documentId])
 }

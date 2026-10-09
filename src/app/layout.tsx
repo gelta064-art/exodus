@@ -15,19 +15,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dramai — AI Mini-Drama Series",
+  title: "Inkvine — Voice-Cloned Audiobook Reader",
   description:
-    "Turn any story into addictive vertical mini-dramas. AI writes the script, casts distinct voices, paints every scene, and plays it back episode by episode.",
+    "Upload any document and listen to it narrated by your personal synthetic voice. EPUB, PDF, and TXT to immersive audio.",
   keywords: [
-    "Dramai",
-    "mini drama",
-    "AI drama",
-    "short drama",
-    "vertical drama",
-    "ReelShort",
-    "DramaBox",
+    "Inkvine",
+    "audiobook reader",
+    "text to speech",
+    "voice clone",
+    "EPUB reader",
+    "PDF to audio",
   ],
-  authors: [{ name: "Dramai" }],
+  authors: [{ name: "Inkvine" }],
 };
 
 export default function RootLayout({
