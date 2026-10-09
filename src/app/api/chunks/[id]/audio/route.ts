@@ -23,8 +23,8 @@ export async function POST(
     await db.audioChunk.update({ where: { id }, data: { status: "pending" } });
     const voice = chunk.document.voiceId || "tongtong";
     const buffer = await generateTtsBuffer(chunk.text, voice);
-    const url = saveMediaBuffer(buffer, "chunks", "wav");
-    if (chunk.audioUrl) deleteMediaFile(chunk.audioUrl);
+    const url = await saveMediaBuffer(buffer, "chunks", "wav");
+    if (chunk.audioUrl) await deleteMediaFile(chunk.audioUrl);
     await db.audioChunk.update({
       where: { id },
       data: { audioUrl: url, status: "ready" },

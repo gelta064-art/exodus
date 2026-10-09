@@ -25,8 +25,8 @@ export async function POST(
 
   try {
     const buffer = await generateCoverBuffer(doc.coverPrompt);
-    const url = saveMediaBuffer(buffer, "covers", "png");
-    if (doc.coverUrl) deleteMediaFile(doc.coverUrl);
+    const url = await saveMediaBuffer(buffer, "covers", "png");
+    if (doc.coverUrl) await deleteMediaFile(doc.coverUrl);
     await db.document.update({ where: { id }, data: { coverUrl: url } });
     return NextResponse.json({ coverUrl: url });
   } catch (err) {
