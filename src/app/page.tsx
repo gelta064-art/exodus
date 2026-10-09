@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, Mic, Library as LibraryIcon, Sun, Moon } from "lucide-react";
+import { BookOpen, Mic, Users, Library as LibraryIcon } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { LibraryView } from "@/components/inkvine/library-view";
 import { ReaderView } from "@/components/inkvine/reader-view";
 import { VoiceStudioView } from "@/components/inkvine/voice-studio-view";
+import { CommunityView } from "@/components/inkvine/community-view";
 import { UploadView } from "@/components/inkvine/upload-view";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           <button
             onClick={() => useAppStore.getState().backToLibrary()}
             className="flex items-center gap-2.5"
@@ -35,6 +36,12 @@ export default function Home() {
               onClick={() => useAppStore.getState().backToLibrary()}
               icon={<LibraryIcon className="h-4 w-4" />}
               label="Library"
+            />
+            <NavButton
+              active={view === "community"}
+              onClick={() => useAppStore.getState().setView("community")}
+              icon={<Users className="h-4 w-4" />}
+              label="Community"
             />
             <NavButton
               active={view === "voices"}
@@ -60,6 +67,7 @@ export default function Home() {
             {view === "library" && <LibraryView />}
             {view === "reader" && <ReaderView />}
             {view === "voices" && <VoiceStudioView />}
+            {view === "community" && <CommunityView />}
             {view === "upload" && <UploadView />}
           </motion.div>
         </AnimatePresence>
@@ -67,10 +75,10 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-border/60 bg-background/60">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-4 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 flex items-center justify-between text-xs text-muted-foreground">
           <p className="flex items-center gap-1.5">
             <BookOpen className="h-3.5 w-3.5 text-primary" />
-            Inkvine — your documents, narrated.
+            Inkvine — read together, narrated your way.
           </p>
           <p>
             Powered by <span className="text-foreground/80 font-medium">Z.ai</span> · TTS

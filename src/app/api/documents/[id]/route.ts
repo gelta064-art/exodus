@@ -10,6 +10,7 @@ function serialize(doc: any): DocumentData {
   return {
     id: doc.id,
     title: doc.title,
+    author: doc.author ?? null,
     fileName: doc.fileName,
     fileType: doc.fileType,
     rawText: doc.rawText,
@@ -33,6 +34,10 @@ function serialize(doc: any): DocumentData {
         status: ch.status,
         createdAt: ch.createdAt.toISOString(),
       })),
+    shelf: doc.shelf ?? null,
+    rating: doc.rating ?? null,
+    review: doc.review ?? null,
+    reviewAt: doc.reviewAt ? doc.reviewAt.toISOString() : null,
   };
 }
 
@@ -59,6 +64,12 @@ export async function PATCH(
   if (typeof body.voiceId === "string") data.voiceId = body.voiceId;
   if (typeof body.progress === "number") data.progress = body.progress;
   if (typeof body.lastChunk === "number") data.lastChunk = body.lastChunk;
+  if (typeof body.shelf === "string") data.shelf = body.shelf || null;
+  if (typeof body.rating === "number") data.rating = body.rating || null;
+  if (typeof body.review === "string") {
+    data.review = body.review || null;
+    data.reviewAt = body.review ? new Date() : null;
+  }
 
   const doc = await db.document.update({ where: { id }, data });
   return NextResponse.json({ ok: true });

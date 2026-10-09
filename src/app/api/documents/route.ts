@@ -14,6 +14,7 @@ function serialize(doc: any): DocumentData {
   return {
     id: doc.id,
     title: doc.title,
+    author: doc.author ?? null,
     fileName: doc.fileName,
     fileType: doc.fileType,
     rawText: doc.rawText,
@@ -37,6 +38,10 @@ function serialize(doc: any): DocumentData {
         status: ch.status,
         createdAt: ch.createdAt.toISOString(),
       })),
+    shelf: doc.shelf ?? null,
+    rating: doc.rating ?? null,
+    review: doc.review ?? null,
+    reviewAt: doc.reviewAt ? doc.reviewAt.toISOString() : null,
   };
 }
 

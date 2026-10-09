@@ -1,5 +1,7 @@
 // Shared types for Inkvine — Voice-Cloned Audiobook Reader
 
+export type Shelf = "want_to_read" | "reading" | "read";
+
 export interface VoiceProfileData {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ export interface AudioChunkData {
 export interface DocumentData {
   id: string;
   title: string;
+  author: string | null;
   fileName: string;
   fileType: string;
   rawText: string;
@@ -38,9 +41,24 @@ export interface DocumentData {
   progress: number;
   lastChunk: number;
   chunks: AudioChunkData[];
+  // Goodreads-style social
+  shelf: Shelf | null;
+  rating: number | null;
+  review: string | null;
+  reviewAt: string | null;
 }
 
-export type AppView = "library" | "reader" | "voices" | "upload";
+export interface ActivityData {
+  id: string;
+  type: string;
+  reader: string;
+  readerAvatar: string;
+  documentTitle: string;
+  detail: string | null;
+  createdAt: string;
+}
+
+export type AppView = "library" | "reader" | "voices" | "community" | "upload";
 
 export const VOICE_OPTIONS = [
   "tongtong",
@@ -51,3 +69,9 @@ export const VOICE_OPTIONS = [
   "kazi",
   "douji",
 ] as const;
+
+export const SHELVES: { id: Shelf; label: string; emoji: string }[] = [
+  { id: "want_to_read", label: "Want to Read", emoji: "📚" },
+  { id: "reading", label: "Currently Reading", emoji: "🎧" },
+  { id: "read", label: "Read", emoji: "✅" },
+];

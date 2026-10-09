@@ -1,4 +1,4 @@
-// Inkvine — Voice-Cloned Audiobook Reader
+// Inkvine — Voice-Cloned Audiobook Reader (NaturalReader + Goodreads)
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +11,7 @@ datasource db {
 model Document {
   id          String       @id @default(cuid())
   title       String
+  author      String?
   fileName    String
   fileType    String // txt | epub | pdf
   rawText     String
@@ -23,12 +24,17 @@ model Document {
   chunks      AudioChunk[]
   progress    Float        @default(0) // 0..1 playback progress
   lastChunk   Int          @default(0)
+  // Goodreads-style social
+  shelf       String?      // want_to_read | reading | read
+  rating      Int?         // 1..5
+  review      String?
+  reviewAt    DateTime?
 }
 
 model VoiceProfile {
   id          String   @id @default(cuid())
   name        String
-  voiceId     String   // maps to z-ai TTS voice
+  voiceId     String
   description String
   accentColor String   @default("amber")
   gender      String   @default("neutral")
@@ -45,8 +51,19 @@ model AudioChunk {
   text       String
   charCount  Int
   audioUrl   String?
-  status     String   @default("pending") // pending | ready | error
+  status     String   @default("pending")
   createdAt  DateTime @default(now())
 
   @@index([documentId])
+}
+
+// Goodreads-style community activity feed
+model Activity {
+  id         String   @id @default(cuid())
+  type       String // started | finished | rated | reviewed | shelved | joined
+  reader     String // display name of the (mock) reader
+  readerAvatar String @default("")
+  documentTitle String
+  detail     String? // extra context (rating value, shelf name, review excerpt)
+  createdAt  DateTime @default(now())
 }

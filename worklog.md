@@ -101,3 +101,24 @@ Stage Summary:
 - Inkvine fully functional: upload EPUB/PDF/TXT → parse → chunk → TTS narrate → reader with variable speed + text highlight + chunk navigation
 - 7 voice profiles (TongTong, Jam, ChuiChui, XiaoChen, LuoDo, Kazi, DouJi) + custom profile creation
 - Browser-verified: library, reader (audio plays, highlight works), voice studio all render; 0 console errors; 0 lint errors
+
+---
+Task ID: naturalreader-goodreads
+Agent: main
+Task: Redesign Inkvine to NaturalReader-style bookshelf + Goodreads social features
+
+Work Log:
+- Prisma: added shelf (want_to_read|reading|read), rating (1-5), review, reviewAt to Document; added Activity model (community feed with reader/avatar/docTitle/detail/type/createdAt)
+- types.ts: Shelf type, ActivityData, SHELVES constant (3 shelves with emoji/label)
+- API: documents PATCH now accepts shelf/rating/review; new /api/activity GET (seeds 10 community entries on first call with staggered timestamps) + POST
+- hooks: added useActivity()
+- page.tsx: added Community nav (Library/Community/Voices), max-w-6xl layout
+- library-view REWRITE (NaturalReader style): "My Library" header with search + stats (books/chars/reading/finished); shelf filter chips (All/Want to Read/Currently Reading/Read with counts); "Currently Reading" horizontal featured row (ReadingCard with cover+progress+Resume); bookshelf grid (BookCover with hover overlay, status badge, star rating, shelf badge, delete on hover); "Want to Read" mini-covers horizontal row; StarRating component (interactive, hover); ShelfBadge
+- reader-view: added SocialBar component (shelf switcher chips, interactive star rating, review composer with textarea + Save, collapsed review display)
+- community-view (Goodreads style): "Reader Activity" header; stats row (active readers / ratings&reviews / avg rating); "Trending this week" (top titles from activity counts); "Recent Activity" feed (avatar + reader name + verb + doc title + detail + timeAgo + colored type icon)
+- Seeded 3 test books with covers: "The Lighthouse Keeper's Daughter" (reading, 4★), "The Cartographer's Apprentice" (want_to_read), "Salt and Signal" (read, 5★, review)
+
+Stage Summary:
+- Library now looks like NaturalReader: bookshelf grid of covers with hover-to-play, shelf filters, Currently Reading featured row, search
+- Goodreads social features working: shelves (3), star ratings (interactive 1-5), reviews (composer), community activity feed (10 seeded entries with avatars/timestamps), trending, stats
+- Browser-verified: library grid + filters + featured row render; community feed shows activity with timeAgo; reader social bar shows shelf/rating/review controls with 5 stars filled; 0 console errors; 0 lint errors; mobile responsive

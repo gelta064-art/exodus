@@ -13,13 +13,17 @@ import {
   Gauge,
   Book,
   AlertTriangle,
-  List,
+  Star,
+  Check,
+  PenLine,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { useDocument } from "./hooks";
 import { api } from "@/lib/api-client";
 import { voiceConfig } from "@/lib/voices";
 import { generateDocumentAudio, type GenerateProgress } from "./generator";
+import { SHELVES, type Shelf } from "@/lib/types";
+import { StarRating } from "./library-view";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -207,6 +211,9 @@ export function ReaderView() {
         )}
       </div>
 
+      {/* Social controls: shelf + rating + review */}
+      <SocialBar doc={doc} />
+
       {/* Generation banner */}
       {generating && progress && (
         <div className="mb-4 rounded-xl bg-amber-500/10 ring-1 ring-amber-400/30 p-3">
@@ -341,6 +348,142 @@ export function ReaderView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Goodreads-style shelf switcher + star rating + review composer */
+function SocialBar({ doc }: { doc: any }) {
+  const bumpRefresh = useAppStore((s) => s.bumpRefresh);
+  const [shelf, setShelf] = React.useState<Shelf | null>(doc.shelf);
+  const [rating, setRating] = React.useState<number | null>(doc.rating);
+  const [review, setReview] = React.useState(doc.review || "");
+  const [showReview, setShowReview] = React.useState(false);
+
+  // Sync when doc changes
+  React.useEffect(() => {
+    setShelf(doc.shelf);
+    setRating(doc.rating);
+    setReview(doc.review || "");
+  }, [doc.id, doc.shelf, doc.rating, doc.review]);
+
+  async function patchShelf(s: Shelf | null) {
+    setShelf(s);
+    try {
+      await api(`/api/documents/${doc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ shelf: s || "" }),
+      });
+      bumpRefresh();
+      if (s) toast.success(`Moved to ${SHELVES.find((x) => x.id === s)?.label}`);
+    } catch {
+      toast.error("Failed to update shelf");
+    }
+  }
+
+  async function patchRating(r: number | null) {
+    setRating(r);
+    try {
+      await api(`/api/documents/${doc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ rating: r || 0 }),
+      });
+      bumpRefresh();
+    } catch {
+      toast.error("Failed to save rating");
+    }
+  }
+
+  async function saveReview() {
+    try {
+      await api(`/api/documents/${doc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ review }),
+      });
+      bumpRefresh();
+      toast.success("Review saved");
+      setShowReview(false);
+    } catch {
+      toast.error("Failed to save review");
+    }
+  }
+
+  return (
+    <div className="mb-5 rounded-2xl bg-card ring-1 ring-border/60 p-3 sm:p-4 space-y-3">
+      {/* Shelf switcher */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">Shelf:</span>
+        {SHELVES.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => patchShelf(shelf === s.id ? null : s.id)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition",
+              shelf === s.id
+                ? "bg-primary text-primary-foreground ring-primary"
+                : "bg-background text-muted-foreground ring-border hover:text-foreground hover:ring-primary/30"
+            )}
+          >
+            <span>{s.emoji}</span>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Rating */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your rating:</span>
+          <StarRating value={rating} size={18} onChange={(v) => patchRating(v === rating ? 0 : v)} />
+          {rating ? <span className="text-xs text-muted-foreground ml-1">{rating}/5</span> : null}
+        </div>
+        <button
+          onClick={() => setShowReview((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition"
+        >
+          <PenLine className="h-3.5 w-3.5" />
+          {doc.review ? "Edit review" : "Write a review"}
+        </button>
+      </div>
+
+      {/* Review composer / display */}
+      <AnimatePresence>
+        {showReview && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <textarea
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              placeholder="Share what you thought about this book…"
+              rows={3}
+              maxLength={500}
+              className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition resize-none"
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">{review.length}/500</span>
+              <div className="flex gap-2">
+                <button onClick={() => setShowReview(false)} className="rounded-lg bg-muted text-muted-foreground px-3 py-1.5 text-xs font-medium hover:text-foreground transition">
+                  Cancel
+                </button>
+                <button onClick={saveReview} className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:brightness-110 transition">
+                  <Check className="h-3.5 w-3.5" /> Save
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Existing review (collapsed) */}
+      {doc.review && !showReview && (
+        <div className="rounded-lg bg-background/60 p-2.5 text-xs text-muted-foreground italic line-clamp-2">
+          &ldquo;{doc.review}&rdquo;
+        </div>
+      )}
     </div>
   );
 }

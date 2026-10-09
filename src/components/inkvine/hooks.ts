@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { DocumentData, VoiceProfileData } from "@/lib/types";
+import type { DocumentData, VoiceProfileData, ActivityData } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api-client";
 
@@ -35,6 +35,17 @@ export function useVoices() {
     queryFn: async () => {
       const res = await api<{ voices: VoiceProfileData[] }>("/api/voices");
       return res.voices;
+    },
+  });
+}
+
+export function useActivity() {
+  const refreshKey = useAppStore((s) => s.refreshKey);
+  return useQuery<ActivityData[]>({
+    queryKey: ["activity", refreshKey],
+    queryFn: async () => {
+      const res = await api<{ activities: ActivityData[] }>("/api/activity");
+      return res.activities;
     },
   });
 }
