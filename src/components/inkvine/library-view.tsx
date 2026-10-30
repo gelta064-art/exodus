@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import {
-  Upload, Book, Play, MoreVertical, Star, Search, Plus, Clock,
+  Upload, Book, Play, MoreVertical, Star, Search, Plus, Clock, ChevronRight,
 } from "lucide-react";
 import { useDocuments, useLivingBooks } from "./hooks";
 import { useAppStore } from "@/lib/store";
@@ -88,6 +88,41 @@ export function LibraryView() {
           </button>
         </div>
       </div>
+
+      {/* Interactive Story banner */}
+      {!query && (
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => setView("story")}
+          className="group relative w-full overflow-hidden rounded-2xl mb-8 text-left"
+        >
+          <div className="relative bg-gradient-to-br from-red-950/60 via-black to-black ring-1 ring-red-500/30 p-5 sm:p-6 overflow-hidden">
+            {/* decorative glow */}
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-red-500/10 blur-3xl group-hover:bg-red-500/20 transition" />
+            <div className="relative flex items-center gap-4">
+              <span className="grid place-items-center h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-red-500/15 ring-1 ring-red-500/40 text-red-400 shrink-0">
+                <span className="text-2xl">📓</span>
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-red-400/70 mb-0.5">
+                  Interactive Fiction
+                </p>
+                <h3 className="text-base sm:text-lg font-bold leading-tight">
+                  Death Note — Choose Your Path
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                  You are Light Yagami. Every choice writes a different story.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 text-white px-3 sm:px-4 py-2 text-xs font-semibold shrink-0 group-hover:scale-105 transition">
+                Play
+                <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </div>
+        </motion.button>
+      )}
 
       {query ? (
         /* Search results */

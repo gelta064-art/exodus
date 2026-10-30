@@ -10,13 +10,14 @@ import { CommunityView } from "@/components/inkvine/community-view";
 import { DiscoverView } from "@/components/inkvine/discover-view";
 import { UploadView } from "@/components/inkvine/upload-view";
 import { ButterflyReaderView } from "@/components/inkvine/butterfly-reader-view";
+import { StoryView } from "@/components/inkvine/story-view";
 import { NowPlayingBar } from "@/components/inkvine/now-playing-bar";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const view = useAppStore((s) => s.view);
   const nowPlaying = useAppStore((s) => s.nowPlaying);
-  const immersive = view === "reader" || view === "butterfly";
+  const immersive = view === "reader" || view === "butterfly" || view === "story";
 
   const navItems = [
     { id: "library" as const, label: "Home", icon: HomeIcon, view: "library" as const },
@@ -115,6 +116,7 @@ export default function Home() {
               {view === "library" && <LibraryView />}
               {view === "reader" && <ReaderView />}
               {view === "butterfly" && <ButterflyReaderView />}
+              {view === "story" && <StoryView />}
               {view === "voices" && <VoiceStudioView />}
               {view === "community" && <CommunityView />}
               {view === "discover" && <DiscoverView />}

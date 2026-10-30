@@ -84,7 +84,7 @@ export interface LivingBookData {
   pages: LivingPageData[];
 }
 
-export type AppView = "library" | "reader" | "voices" | "community" | "discover" | "upload" | "butterfly";
+export type AppView = "library" | "reader" | "voices" | "community" | "discover" | "upload" | "butterfly" | "story";
 
 export const VOICE_OPTIONS = [
   "tongtong",
