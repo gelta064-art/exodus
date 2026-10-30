@@ -19,6 +19,7 @@ interface HistoryItem {
 interface SceneResponse {
   title: string;
   text: string;
+  artPrompt: string;
   choices: { id: string; text: string; tone: string }[];
   isEnding: boolean;
 }
@@ -41,11 +42,12 @@ NARRATIVE RULES:
 - End each scene with a dramatic beat or tension point.
 - Provide exactly 3 choices that meaningfully diverge (not "yes/no/maybe" — give genuinely different moral/tactical paths).
 - Each choice has a "tone" — one word: bold, cautious, cruel, clever, reckless, ruthless, merciful, defiant, manipulative, desperate.
+- Write "artPrompt": a single descriptive sentence (under 120 chars) for an AI image generator describing the visual of THIS scene as a vertical 9:16 manga-style illustration. Concrete: who is in frame, what they're doing, setting, mood, lighting. No text/letters in the image. Keep character descriptions consistent across scenes (Light: young man with neat brown hair, sharp eyes; Ryuk: towering skeletal shinigami with feathered wings, sharp teeth, glowing yellow eyes; L: pale young man with messy black hair, dark circles under eyes, white shirt, crouching posture).
 
 If the story has reached a natural conclusion (Light is caught, killed, wins, or a major turning point), set isEnding: true and provide 0 choices.
 
 Respond with ONLY a JSON object, no markdown:
-{"title":string,"text":string,"choices":[{"id":"a|b|c","text":string,"tone":string}],"isEnding":boolean}`;
+{"title":string,"text":string,"artPrompt":string,"choices":[{"id":"a|b|c","text":string,"tone":string}],"isEnding":boolean}`;
 
 function extractJson(text: string): unknown {
   let t = text.trim();

@@ -16,6 +16,7 @@ interface Choice {
 interface Scene {
   title: string;
   text: string;
+  artPrompt: string;
   choices: Choice[];
   isEnding: boolean;
 }
@@ -45,12 +46,42 @@ export function StoryView() {
   const [loading, setLoading] = React.useState(true);
   const [showHistory, setShowHistory] = React.useState(false);
   const [pendingChoice, setPendingChoice] = React.useState<string | null>(null);
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [imageLoading, setImageLoading] = React.useState(false);
+  const [imageError, setImageError] = React.useState(false);
+  const fetchIdRef = React.useRef(0);
 
   // Fetch opening scene on mount
   React.useEffect(() => {
     fetchScene([], undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch illustration whenever a new scene with an artPrompt arrives
+  React.useEffect(() => {
+    if (!scene?.artPrompt) return;
+    const myId = ++fetchIdRef.current;
+    setImageUrl(null);
+    setImageLoading(true);
+    setImageError(false);
+    api<{ imageUrl: string }>("/api/story/illustrate", {
+      method: "POST",
+      body: JSON.stringify({ prompt: scene.artPrompt }),
+    })
+      .then((res) => {
+        if (myId === fetchIdRef.current) {
+          setImageUrl(res.imageUrl);
+          setImageLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("illustration failed:", err);
+        if (myId === fetchIdRef.current) {
+          setImageError(true);
+          setImageLoading(false);
+        }
+      });
+  }, [scene]);
 
   async function fetchScene(hist: HistoryItem[], choice?: string) {
     setLoading(true);
@@ -159,6 +190,60 @@ export function StoryView() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4 }}
             >
+              {/* Scene illustration */}
+              <div className="relative rounded-2xl overflow-hidden ring-1 ring-border/60 mb-5 bg-black">
+                <div className="relative aspect-[3/4] sm:aspect-[16/10] w-full">
+                  <AnimatePresence mode="wait">
+                    {imageLoading && (
+                      <motion.div
+                        key="img-loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 grid place-items-center bg-gradient-to-br from-red-950/30 via-black to-black"
+                      >
+                        <div className="text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-red-400/60 mx-auto mb-3" />
+                          <p className="text-xs text-muted-foreground italic">
+                            illustrating the scene…
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                    {imageUrl && !imageLoading && (
+                      <motion.div
+                        key={imageUrl}
+                        initial={{ opacity: 0, scale: 1.03 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="absolute inset-0"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imageUrl}
+                          alt={scene.title}
+                          className="h-full w-full object-cover"
+                        />
+                        {/* gradient for text readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+                      </motion.div>
+                    )}
+                    {imageError && !imageLoading && (
+                      <motion.div
+                        key="img-error"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 grid place-items-center bg-gradient-to-br from-red-950/30 via-black to-black"
+                      >
+                        <p className="text-xs text-muted-foreground/60 italic">
+                          (illustration unavailable)
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
               {/* Scene card */}
               <div className="rounded-2xl bg-gradient-to-br from-card to-card/60 ring-1 ring-border/60 p-6 sm:p-8 mb-6">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 text-foreground">
