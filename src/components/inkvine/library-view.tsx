@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Upload, Book, Play, MoreVertical, Star, Search, Plus, Clock,
 } from "lucide-react";
-import { useDocuments } from "./hooks";
+import { useDocuments, useLivingBooks } from "./hooks";
 import { useAppStore } from "@/lib/store";
 import { voiceConfig } from "@/lib/voices";
 import { SHELVES, type Shelf } from "@/lib/types";
@@ -20,8 +20,10 @@ import { cn } from "@/lib/utils";
 
 export function LibraryView() {
   const { data: docs, isLoading } = useDocuments();
+  const { data: livingBooks } = useLivingBooks();
   const setView = useAppStore((s) => s.setView);
   const openReader = useAppStore((s) => s.openReader);
+  const openButterfly = useAppStore((s) => s.openButterfly);
   const bumpRefresh = useAppStore((s) => s.bumpRefresh);
   const [query, setQuery] = React.useState("");
 
@@ -101,6 +103,51 @@ export function LibraryView() {
         </section>
       ) : (
         <div className="space-y-8">
+          {/* Living Books (Butterfly Engine) */}
+          {livingBooks && livingBooks.length > 0 && (
+            <section>
+              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-cyan-300/80 mb-3 flex items-center gap-1.5">
+                <span className="text-cyan-300">🦋</span>
+                Living Books
+                <span className="text-[9px] text-muted-foreground font-normal normal-case tracking-normal ml-1">tap the butterfly to bring pages alive</span>
+              </h2>
+              <div className="flex gap-4 overflow-x-auto ct-scroll pb-2 -mx-1 px-1">
+                {livingBooks.map((b, i) => (
+                  <motion.button
+                    key={b.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    onClick={() => openButterfly(b.id)}
+                    className="group relative shrink-0 w-32 sm:w-36 text-left"
+                  >
+                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-muted ring-1 ring-cyan-400/20 group-hover:ring-cyan-300/50 transition shadow-md group-hover:shadow-lg group-hover:shadow-cyan-500/10 group-hover:-translate-y-0.5 transition-all">
+                      {(b.coverUrl || b.pages[0]?.artUrl) && (
+                        <img src={(b.coverUrl || b.pages[0]?.artUrl) as string} alt={b.title} className="h-full w-full object-cover" />
+                      )}
+                      {!b.coverUrl && !b.pages[0]?.artUrl && (
+                        <div className="h-full w-full grid place-items-center bg-gradient-to-br from-cyan-500/10 to-indigo-500/10">
+                          <Book className="h-8 w-8 text-cyan-300/30" />
+                        </div>
+                      )}
+                      {/* butterfly badge */}
+                      <span className="absolute top-2 right-2 grid place-items-center h-6 w-6 rounded-full bg-cyan-400/20 ring-1 ring-cyan-300/50 text-cyan-200 text-xs animate-butterfly-glow">
+                        🦋
+                      </span>
+                      {/* hover overlay */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="text-2xl">🦋</span>
+                      </div>
+                    </div>
+                    <h3 className="mt-2 text-xs font-semibold leading-tight line-clamp-2">{b.title}</h3>
+                    {b.author && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">By {b.author}</p>}
+                    <p className="text-[10px] text-cyan-300/60 mt-0.5">{b.pages.length} pages</p>
+                  </motion.button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Continue listening */}
           {reading.length > 0 && (
             <Carousel title="Continue listening">

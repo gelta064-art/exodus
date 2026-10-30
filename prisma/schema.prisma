@@ -1,4 +1,4 @@
-// Inkvine — Voice-Cloned Audiobook Reader (NaturalReader + Goodreads)
+// Inkvine — Voice-Cloned Audiobook Reader (NaturalReader + Goodreads + Butterfly Engine)
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,7 +13,7 @@ model Document {
   title       String
   author      String?
   fileName    String
-  fileType    String // txt | epub | pdf
+  fileType    String
   rawText     String
   charCount   Int
   coverUrl    String?
@@ -22,11 +22,10 @@ model Document {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   chunks      AudioChunk[]
-  progress    Float        @default(0) // 0..1 playback progress
+  progress    Float        @default(0)
   lastChunk   Int          @default(0)
-  // Goodreads-style social
-  shelf       String?      // want_to_read | reading | read
-  rating      Int?         // 1..5
+  shelf       String?
+  rating      Int?
   review      String?
   reviewAt    DateTime?
 }
@@ -57,13 +56,41 @@ model AudioChunk {
   @@index([documentId])
 }
 
-// Goodreads-style community activity feed
 model Activity {
-  id         String   @id @default(cuid())
-  type       String // started | finished | rated | reviewed | shelved | joined
-  reader     String // display name of the (mock) reader
-  readerAvatar String @default("")
+  id            String   @id @default(cuid())
+  type          String
+  reader        String
+  readerAvatar  String   @default("")
   documentTitle String
-  detail     String? // extra context (rating value, shelf name, review excerpt)
-  createdAt  DateTime @default(now())
+  detail        String?
+  createdAt     DateTime @default(now())
+}
+
+// Butterfly Engine — living books with animated pages
+model LivingBook {
+  id          String        @id @default(cuid())
+  title       String
+  author      String?
+  coverPrompt String
+  coverUrl    String?
+  createdAt   DateTime      @default(now())
+  pages       LivingPage[]
+}
+
+model LivingPage {
+  id              String      @id @default(cuid())
+  bookId          String
+  book            LivingBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  order           Int
+  title           String
+  text            String
+  artPrompt       String
+  artUrl          String?
+  artStatus       String      @default("pending")
+  videoUrl        String?
+  videoStatus     String      @default("pending")
+  ambientAudioUrl String?
+  audioStatus     String      @default("pending")
+
+  @@index([bookId])
 }

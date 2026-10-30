@@ -58,7 +58,33 @@ export interface ActivityData {
   createdAt: string;
 }
 
-export type AppView = "library" | "reader" | "voices" | "community" | "discover" | "upload";
+// Butterfly Engine — living books with animated pages
+export interface LivingPageData {
+  id: string;
+  bookId: string;
+  order: number;
+  title: string;
+  text: string;
+  artPrompt: string;
+  artUrl: string | null;
+  artStatus: string;
+  videoUrl: string | null;
+  videoStatus: string;
+  ambientAudioUrl: string | null;
+  audioStatus: string;
+}
+
+export interface LivingBookData {
+  id: string;
+  title: string;
+  author: string | null;
+  coverPrompt: string;
+  coverUrl: string | null;
+  createdAt: string;
+  pages: LivingPageData[];
+}
+
+export type AppView = "library" | "reader" | "voices" | "community" | "discover" | "upload" | "butterfly";
 
 export const VOICE_OPTIONS = [
   "tongtong",

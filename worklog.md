@@ -142,3 +142,30 @@ Work Log:
 Stage Summary:
 - Inkvine now looks like Audible: left sidebar nav, deep navy theme, horizontal carousel rows with uppercase headers, book cards with covers + kebab menus, fixed Now Playing mini-player bar at bottom
 - Browser-verified: sidebar (Home/Discover/Community/Voices + Upload), carousels (CONTINUE LISTENING/WANT TO READ/FINISHED/ALL BOOKS), now-playing bar shows "The Lighthouse Keeper's Daughter Chapter 1 of 4 · 0m left · 1x" with cover img + play btn, Discover view with trending/recommended/genres; mobile responsive (top bar on mobile); 0 console errors; 0 lint errors
+
+---
+Task ID: butterfly-engine
+Agent: main
+Task: Build the Butterfly Engine — living pages that come alive with motion + sound
+
+Work Log:
+- Prisma: added LivingBook + LivingPage models (artUrl/artStatus, videoUrl/videoStatus, ambientAudioUrl/audioStatus)
+- API: /api/living-books (list) + /api/living-books/[id] (get with pages)
+- Hooks: useLivingBooks + useLivingBook
+- Store: added openButterfly(bookId) + selectedBookId
+- Generated static page art: "girl beneath weeping willow, moonlit pond, fireflies" (768x1344 PNG)
+- Video generation attempted with z-ai video SDK (image-to-video, quality mode, with_audio) — hit 429 rate limit twice
+- FALLBACK: Built CSS-based "living" mode — Ken Burns zoom/pan + 24 animated firefly particles (framer-motion, random drift/opacity/scale) + ambient TTS narration (luodo voice, 0.85x speed)
+- Generated ambient audio via TTS: page1-ambient.wav (1.4MB, narrates the page text)
+- Seeded "The Willow Pond" living book (2 pages: page 1 fully loaded with art+audio, page 2 teaser)
+- Butterfly Reader view: full-screen page canvas, clean chrome (top bar: back/title/chapter-list; bottom: page-turn + progress bar), text overlay at bottom
+- THE BUTTERFLY BUTTON: custom SVG butterfly icon, top-right, electric cyan glow (animate-butterfly-glow), wing flutter animation (animate-wing-flutter); when alive: stronger alive-pulse animation
+- Click butterfly → 300ms crossfade (framer-motion AnimatePresence) from static → living mode; ambient audio unmutes
+- Click again → revert to quiet static (audio pauses, CSS layer unmounts)
+- Library: "🦋 LIVING BOOKS" shelf at top with butterfly badges on covers, cyan accent
+- Supports BOTH living modes: real video (when available) + CSS fallback (Ken Burns + particles + audio)
+
+Stage Summary:
+- Butterfly Engine prototype WORKING: click butterfly → page comes alive with Ken Burns motion + 24 drifting firefly particles + ambient narration audio; click again → quiet static
+- Browser-verified: butterfly click toggles "Let the page breathe" ↔ "Return to quiet page"; 28 rounded-full elements (particles) appear in living mode; audio plays (page1-ambient.wav, paused=false, time=2); toggling back removes audio + particles; 0 console errors; 0 lint errors
+- Video gen rate-limited (429) — CSS fallback ensures the prototype works tonight; real video can swap in seamlessly later (code auto-detects: videoUrl → video mode, else ambientAudioUrl → CSS mode)

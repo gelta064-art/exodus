@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { DocumentData, VoiceProfileData, ActivityData } from "@/lib/types";
+import type { DocumentData, VoiceProfileData, ActivityData, LivingBookData } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { api } from "@/lib/api-client";
 
@@ -47,5 +47,28 @@ export function useActivity() {
       const res = await api<{ activities: ActivityData[] }>("/api/activity");
       return res.activities;
     },
+  });
+}
+
+export function useLivingBooks() {
+  const refreshKey = useAppStore((s) => s.refreshKey);
+  return useQuery<LivingBookData[]>({
+    queryKey: ["livingBooks", refreshKey],
+    queryFn: async () => {
+      const res = await api<{ books: LivingBookData[] }>("/api/living-books");
+      return res.books;
+    },
+  });
+}
+
+export function useLivingBook(bookId: string | null) {
+  const refreshKey = useAppStore((s) => s.refreshKey);
+  return useQuery<LivingBookData>({
+    queryKey: ["livingBook", bookId, refreshKey],
+    queryFn: async () => {
+      const res = await api<{ book: LivingBookData }>(`/api/living-books/${bookId}`);
+      return res.book;
+    },
+    enabled: !!bookId,
   });
 }
