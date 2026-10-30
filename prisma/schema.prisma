@@ -1,6 +1,8 @@
 // Inkvine — Voice-Cloned Audiobook Reader (NaturalReader + Goodreads + Butterfly Engine)
+// Local dev: SQLite via DATABASE_URL. Cloudflare: D1 via driver adapter (see src/lib/db.ts).
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

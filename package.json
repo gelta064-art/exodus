@@ -10,7 +10,11 @@
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "build:cf": "opennextjs-cloudflare build",
+    "deploy:cf": "opennextjs-cloudflare build && wrangler deploy",
+    "d1:migrate": "wrangler d1 execute DB --remote --file=./migrations/0001_init.sql",
+    "d1:migrate:local": "wrangler d1 execute DB --local --file=./migrations/0001_init.sql"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1148.0",
@@ -19,6 +23,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.1.1",
     "@mdxeditor/editor": "^3.39.1",
+    "@opennextjs/cloudflare": "^1.20.14",
+    "@prisma/adapter-d1": "6.19.2",
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -56,6 +62,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "epub2": "^3.0.2",
+    "fflate": "^0.8.3",
     "framer-motion": "^12.23.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.525.0",

@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inkvine",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "build": {
+    "command": "npx opennextjs-cloudflare build"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "inkvine-db",
+      "database_id": "437f71a6-4712-48db-a392-c7f4e014920d"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "inkvine-media"
+    }
+  ]
+}

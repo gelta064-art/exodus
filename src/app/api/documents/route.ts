@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { db } from "@/lib/db";
-import { cleanText, chunkText, parseDocument } from "@/lib/parser";
+import { cleanText, chunkText, parseDocumentBuffer } from "@/lib/parser";
 import { generateDocMeta } from "@/lib/ai";
-import { ensureStorageDirs } from "@/lib/storage";
 import type { DocumentData } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -72,20 +69,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save upload to temp file for parsing
-    ensureStorageDirs();
+    // Parse document from in-memory buffer (no fs — Workers compatible)
     const bytes = Buffer.from(await file.arrayBuffer());
-    const tempPath = path.join(
-      process.cwd(),
-      "public",
-      "storage",
-      "uploads",
-      `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`
-    );
-    fs.writeFileSync(tempPath, bytes);
-
-    // Parse document → raw text
-    const rawText = await parseDocument(tempPath, ext);
+    const rawText = await parseDocumentBuffer(bytes, ext);
     const cleaned = cleanText(rawText);
 
     if (cleaned.length < 20) {
@@ -126,13 +112,6 @@ export async function POST(req: NextRequest) {
       },
       include: { chunks: true },
     });
-
-    // Clean up temp upload
-    try {
-      fs.unlinkSync(tempPath);
-    } catch {
-      // ignore
-    }
 
     return NextResponse.json({ document: serialize(doc) });
   } catch (err) {

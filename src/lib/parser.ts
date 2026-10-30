@@ -1,74 +1,54 @@
-import fs from "fs";
-import path from "path";
-
 /**
- * Parse an uploaded document file into plain text.
+ * Document parsing — buffer-based (no filesystem), Cloudflare Workers compatible.
  * Supports: .txt, .md, .epub, .pdf
  */
-export async function parseDocument(
-  filePath: string,
+import { unzipSync } from "fflate";
+
+/**
+ * Parse an uploaded document from its raw bytes.
+ */
+export async function parseDocumentBuffer(
+  bytes: Buffer,
   fileType: string
 ): Promise<string> {
   const ext = fileType.toLowerCase();
 
   if (ext === "txt" || ext === "md") {
-    return fs.readFileSync(filePath, "utf-8");
+    return bytes.toString("utf-8");
   }
 
   if (ext === "epub") {
-    return parseEpub(filePath);
+    return parseEpubBuffer(new Uint8Array(bytes));
   }
 
   if (ext === "pdf") {
-    return parsePdf(filePath);
+    return parsePdfBuffer(bytes);
   }
 
   throw new Error(`Unsupported file type: ${ext}`);
 }
 
-async function parseEpub(filePath: string): Promise<string> {
-  // epub2 is CommonJS — dynamic require
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const EPub = require("epub2");
-  const epub = await new Promise<any>((resolve, reject) => {
-    const e = new EPub(filePath);
-    e.on("end", () => resolve(e));
-    e.on("error", reject);
-    e.parse();
-  });
-
-  // Collect all chapter HTML in spine order
-  const flows: any[] = epub.flow || [];
-  const parts: string[] = [];
-  for (const flow of flows) {
-    const id = flow.id;
-    const html = await new Promise<string>((resolve, reject) => {
-      epub.getChapter(id, (err: any, data: string) => {
-        if (err) reject(err);
-        else resolve(data || "");
-      });
-    });
-    parts.push(htmlToText(html));
-  }
-  return parts.join("\n\n").trim();
-}
-
-async function parsePdf(filePath: string): Promise<string> {
-  // pdf2json — pure JS PDF parser, no worker needed
+async function parsePdfBuffer(pdfBuffer: Buffer): Promise<string> {
+  // pdf2json v4 supports parsing from a buffer (no fs, Workers compatible)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const PDFParser = require("pdf2json");
   const parser = new PDFParser();
 
   return new Promise<string>((resolve, reject) => {
     parser.on("pdfParser_dataReady", (data: any) => {
-      // Extract text from all pages
       const pages = data.Pages || data.data?.Pages || [];
       const parts: string[] = pages.map((page: any) => {
         const texts = page.Texts || [];
         return texts
           .map((t: any) =>
             (t.R || [])
-              .map((r: any) => decodeURIComponent(r.T || ""))
+              .map((r: any) => {
+                try {
+                  return decodeURIComponent(r.T || "");
+                } catch {
+                  return r.T || "";
+                }
+              })
               .join("")
           )
           .join(" ");
@@ -78,22 +58,81 @@ async function parsePdf(filePath: string): Promise<string> {
     parser.on("pdfParser_dataError", (err: any) => {
       reject(new Error(err?.message || "PDF parse error"));
     });
-    parser.loadPDF(filePath);
+    parser.parseBuffer(pdfBuffer);
   });
+}
+
+async function parseEpubBuffer(bytes: Uint8Array): Promise<string> {
+  // Minimal EPUB parser: unzip → container.xml → OPF spine → XHTML → text
+  const files = unzipSync(bytes);
+
+  // 1. Find the OPF path from META-INF/container.xml
+  const containerFile = files["META-INF/container.xml"];
+  if (!containerFile) throw new Error("Invalid EPUB: missing container.xml");
+  const containerXml = new TextDecoder().decode(containerFile);
+  const rootfileMatch = containerXml.match(/full-path="([^"]+)"/);
+  if (!rootfileMatch) throw new Error("Invalid EPUB: no rootfile in container.xml");
+  const opfPath = rootfileMatch[1];
+
+  // 2. Parse the OPF: manifest (id → href) + spine (reading order)
+  const opfFile = files[opfPath];
+  if (!opfFile) throw new Error(`Invalid EPUB: missing OPF at ${opfPath}`);
+  const opfXml = new TextDecoder().decode(opfFile);
+
+  const manifest = new Map<string, string>();
+  const itemRe = /<item\s[^>]*?>/g;
+  let m: RegExpExecArray | null;
+  while ((m = itemRe.exec(opfXml))) {
+    const tag = m[0];
+    const id = tag.match(/id="([^"]+)"/)?.[1];
+    const href = tag.match(/href="([^"]+)"/)?.[1];
+    const mediaType = tag.match(/media-type="([^"]+)"/)?.[1] || "";
+    if (id && href && mediaType.includes("html")) manifest.set(id, href);
+  }
+
+  const spine: string[] = [];
+  const spineMatch = opfXml.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i);
+  if (spineMatch) {
+    const refRe = /idref="([^"]+)"/g;
+    let r: RegExpExecArray | null;
+    while ((r = refRe.exec(spineMatch[1]))) spine.push(r[1]);
+  }
+
+  // 3. Resolve hrefs relative to the OPF location
+  const opfDir = opfPath.includes("/") ? opfPath.slice(0, opfPath.lastIndexOf("/") + 1) : "";
+  const parts: string[] = [];
+  for (const idref of spine) {
+    const href = manifest.get(idref);
+    if (!href) continue;
+    const clean = decodeURIComponent(href).replace(/^\.\//, "");
+    // Resolve ../ segments against the OPF directory
+    const segments: string[] = [];
+    for (const seg of (opfDir + clean).split("/")) {
+      if (seg === "..") segments.pop();
+      else if (seg && seg !== ".") segments.push(seg);
+    }
+    const filePath = segments.join("/");
+    const entry =
+      files[filePath] ||
+      files[opfDir + clean] ||
+      files[clean];
+    if (!entry) continue;
+    const html = new TextDecoder().decode(entry);
+    parts.push(htmlToText(html));
+  }
+
+  if (parts.length === 0) throw new Error("EPUB contained no readable chapters");
+  return parts.join("\n\n").trim();
 }
 
 /** Strip HTML tags, decode entities, normalize whitespace. */
 export function htmlToText(html: string): string {
   let t = html;
-  // Remove scripts/styles
   t = t.replace(/<script[\s\S]*?<\/script>/gi, "");
   t = t.replace(/<style[\s\S]*?<\/style>/gi, "");
-  // Convert block tags to paragraph breaks
   t = t.replace(/<\/(p|div|br|h[1-6]|li|tr)>/gi, "\n");
   t = t.replace(/<br\s*\/?>/gi, "\n");
-  // Strip remaining tags
   t = t.replace(/<[^>]+>/g, "");
-  // Decode common HTML entities
   const entities: Record<string, string> = {
     "&nbsp;": " ",
     "&amp;": "&",
@@ -110,8 +149,7 @@ export function htmlToText(html: string): string {
     "&lsquo;": "\u2018",
     "&rsquo;": "\u2019",
   };
-  t = t.replace(/&[a-zA-Z#0-9]+;/g, (m) => entities[m] ?? m);
-  // Normalize whitespace (keep paragraph breaks)
+  t = t.replace(/&[a-zA-Z#0-9]+;/g, (mch) => entities[mch] ?? mch);
   t = t.replace(/\r\n/g, "\n");
   t = t.replace(/[ \t]+/g, " ");
   t = t.replace(/\n{3,}/g, "\n\n");
@@ -148,18 +186,15 @@ export function chunkText(
 
   for (const para of paragraphs) {
     if (para.length > maxLen) {
-      // Flush current buffer first
       if (current.trim()) {
         chunks.push(current.trim());
         current = "";
       }
-      // Split long paragraph by sentences
       const sentences = para.match(/[^.!?]+[.!?]+["')\]]*\s*|\S+$/g) || [para];
       let sentBuf = "";
       for (const s of sentences) {
         if ((sentBuf + s).length > maxLen) {
           if (sentBuf.trim()) chunks.push(sentBuf.trim());
-          // If a single sentence is too long, hard-split it
           if (s.length > maxLen) {
             for (let i = 0; i < s.length; i += maxLen) {
               chunks.push(s.slice(i, i + maxLen).trim());
