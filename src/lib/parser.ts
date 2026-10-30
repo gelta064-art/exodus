@@ -54,12 +54,32 @@ async function parseEpub(filePath: string): Promise<string> {
 }
 
 async function parsePdf(filePath: string): Promise<string> {
-  // pdf-parse is CommonJS — dynamic require
+  // pdf2json — pure JS PDF parser, no worker needed
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse");
-  const dataBuffer = fs.readFileSync(filePath);
-  const data = await pdfParse(dataBuffer);
-  return (data.text || "").trim();
+  const PDFParser = require("pdf2json");
+  const parser = new PDFParser();
+
+  return new Promise<string>((resolve, reject) => {
+    parser.on("pdfParser_dataReady", (data: any) => {
+      // Extract text from all pages
+      const pages = data.Pages || data.data?.Pages || [];
+      const parts: string[] = pages.map((page: any) => {
+        const texts = page.Texts || [];
+        return texts
+          .map((t: any) =>
+            (t.R || [])
+              .map((r: any) => decodeURIComponent(r.T || ""))
+              .join("")
+          )
+          .join(" ");
+      });
+      resolve(parts.join("\n\n").trim());
+    });
+    parser.on("pdfParser_dataError", (err: any) => {
+      reject(new Error(err?.message || "PDF parse error"));
+    });
+    parser.loadPDF(filePath);
+  });
 }
 
 /** Strip HTML tags, decode entities, normalize whitespace. */

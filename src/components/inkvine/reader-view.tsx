@@ -3,507 +3,470 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Loader2,
-  RefreshCw,
-  Gauge,
-  Book,
-  AlertTriangle,
-  Star,
-  Check,
-  PenLine,
+  ArrowLeft, List, X, Minus, Plus, Sun, Moon, BookOpen,
+  ChevronLeft, ChevronRight, MoreVertical,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { useDocument } from "./hooks";
-import { api } from "@/lib/api-client";
-import { voiceConfig } from "@/lib/voices";
-import { generateDocumentAudio, type GenerateProgress } from "./generator";
-import { SHELVES, type Shelf } from "@/lib/types";
-import { StarRating } from "./library-view";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { paginateText, chapterForPage } from "./pagination";
 import { cn } from "@/lib/utils";
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
+type Theme = "dark" | "sepia" | "light";
+
+const THEME_META: Record<Theme, { label: string; icon: any; swatch: string }> = {
+  dark: { label: "Dark", icon: Moon, swatch: "#1a1a2e" },
+  sepia: { label: "Sepia", icon: BookOpen, swatch: "#f4ecd8" },
+  light: { label: "Light", icon: Sun, swatch: "#ffffff" },
+};
+
+const FONT_MIN = 14;
+const FONT_MAX = 24;
+const FONT_STEP = 1;
 
 export function ReaderView() {
   const docId = useAppStore((s) => s.selectedDocId);
   const back = useAppStore((s) => s.backToLibrary);
-  const bumpRefresh = useAppStore((s) => s.bumpRefresh);
-  const setNowPlaying = useAppStore((s) => s.setNowPlaying);
   const { data: doc, isLoading } = useDocument(docId);
 
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const textRef = React.useRef<HTMLDivElement | null>(null);
+  const [pageIndex, setPageIndex] = React.useState(0);
+  const [theme, setTheme] = React.useState<Theme>("dark");
+  const [fontSize, setFontSize] = React.useState(17);
+  const [showControls, setShowControls] = React.useState(true);
+  const [showToc, setShowToc] = React.useState(false);
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [pageDirection, setPageDirection] = React.useState<"next" | "prev">("next");
 
-  const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [loadingAudio, setLoadingAudio] = React.useState(false);
-  const [speed, setSpeed] = React.useState(1);
-  const [generating, setGenerating] = React.useState(false);
-  const [progress, setProgress] = React.useState<GenerateProgress | null>(null);
-  const [timeLeft, setTimeLeft] = React.useState(0);
+  // Paginate the document text
+  const rawText = doc?.rawText ?? "";
+  const paginated = React.useMemo(
+    () => (rawText ? paginateText(rawText) : { pages: [], chapters: [] }),
+    [rawText]
+  );
 
-  const chunks = doc?.chunks ?? [];
-  const current = chunks[currentIndex];
-  const ready = chunks.filter((c) => c.status === "ready").length;
-  const allReady = ready === chunks.length && chunks.length > 0;
+  const pages = paginated.pages;
+  const currentChapter = chapterForPage(pageIndex, paginated.chapters);
 
-  // Sync "now playing" to the global store (for the mini-player bar)
+  // Reset to page 0 when doc changes
   React.useEffect(() => {
-    if (!doc) return;
-    const mins = Math.max(0, Math.round((doc.charCount / 900) * 0.12 * (1 - doc.progress)));
-    const timeLabel = mins > 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
-    setNowPlaying({
-      docId: doc.id,
-      title: doc.title,
-      author: doc.author,
-      coverUrl: doc.coverUrl,
-      chunkIndex: currentIndex,
-      totalChunks: chunks.length,
-      timeLeftLabel: timeLabel,
-      speed,
-      isPlaying,
-    });
-  }, [doc, currentIndex, isPlaying, speed, chunks.length, setNowPlaying]);
-
-  // Reset index when doc changes
-  React.useEffect(() => {
-    setCurrentIndex(0);
-    setIsPlaying(false);
+    setPageIndex(0);
+    setPageDirection("next");
   }, [docId]);
 
-  // Set audio src when chunk changes
+  // Clamp page index if pages changed
   React.useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !current?.audioUrl) return;
-    if (audio.src !== current.audioUrl) {
-      audio.src = current.audioUrl;
-      audio.load();
-      setLoadingAudio(true);
+    if (pageIndex > pages.length - 1) setPageIndex(Math.max(0, pages.length - 1));
+  }, [pages.length, pageIndex]);
+
+  function goNext() {
+    if (pageIndex < pages.length - 1) {
+      setPageDirection("next");
+      setPageIndex((i) => i + 1);
     }
-  }, [currentIndex, current?.audioUrl]);
+  }
+  function goPrev() {
+    if (pageIndex > 0) {
+      setPageDirection("prev");
+      setPageIndex((i) => i - 1);
+    }
+  }
 
-  // Apply speed
-  React.useEffect(() => {
-    if (audioRef.current) audioRef.current.playbackRate = speed;
-  }, [speed, currentIndex]);
-
-  // Play/pause
-  React.useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !current?.audioUrl) return;
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
+  // Tap zones: left third = prev, right third = next, center = toggle controls
+  function handleTap(e: React.MouseEvent) {
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const third = rect.width / 3;
+    if (x < third) {
+      goPrev();
+    } else if (x > third * 2) {
+      goNext();
     } else {
-      audio.pause();
+      setShowControls((v) => !v);
     }
-  }, [isPlaying, currentIndex, current?.audioUrl]);
+  }
 
-  // Scroll current chunk into view
+  // Keyboard navigation
   React.useEffect(() => {
-    const el = textRef.current?.querySelector(`[data-chunk-idx="${currentIndex}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [currentIndex]);
-
-  async function handleEnded() {
-    if (currentIndex + 1 < chunks.length) {
-      setCurrentIndex((i) => i + 1);
-      // Persist progress
-      try {
-        await api(`/api/documents/${docId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ lastChunk: currentIndex + 1, progress: (currentIndex + 1) / chunks.length }),
-        });
-      } catch {}
-    } else {
-      setIsPlaying(false);
-      toast.success("Finished!", { description: "You reached the end of the document." });
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowRight" || e.key === " ") goNext();
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "Escape") setShowToc(false), setShowSettings(false);
     }
-  }
-
-  async function handleGenerateAll() {
-    if (!doc) return;
-    setGenerating(true);
-    setProgress(null);
-    try {
-      await generateDocumentAudio(doc, (p) => setProgress(p));
-      bumpRefresh();
-      toast.success("All audio generated");
-    } catch {
-      toast.error("Generation incomplete");
-    } finally {
-      setGenerating(false);
-      setProgress(null);
-    }
-  }
-
-  function togglePlay() {
-    if (!current?.audioUrl) {
-      toast.error("This chunk's audio isn't ready yet. Generate audio first.");
-      return;
-    }
-    setIsPlaying((p) => !p);
-  }
-
-  function skip(delta: number) {
-    const next = currentIndex + delta;
-    if (next >= 0 && next < chunks.length) {
-      setCurrentIndex(next);
-    }
-  }
-
-  function cycleSpeed() {
-    const i = SPEEDS.indexOf(speed);
-    const next = SPEEDS[(i + 1) % SPEEDS.length];
-    setSpeed(next);
-  }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pageIndex, pages.length]);
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-3xl w-full px-4 sm:px-6 py-6 space-y-3">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-48 rounded-2xl" />
-        <Skeleton className="h-64 rounded-2xl" />
+      <div className="fixed inset-0 grid place-items-center bg-background">
+        <div className="text-center">
+          <BookOpen className="h-8 w-8 text-primary/40 mx-auto mb-3 animate-pulse" />
+          <p className="text-sm text-muted-foreground">Opening your book…</p>
+        </div>
       </div>
     );
   }
 
   if (!doc) {
     return (
-      <div className="mx-auto max-w-2xl w-full px-4 py-16 text-center">
-        <p className="text-muted-foreground">Document not found.</p>
-        <button onClick={back} className="mt-4 text-primary hover:underline text-sm">
-          Back to library
-        </button>
+      <div className="fixed inset-0 grid place-items-center bg-background text-center px-6">
+        <div>
+          <p className="text-muted-foreground text-sm">Document not found.</p>
+          <button onClick={back} className="mt-4 text-primary hover:underline text-sm">
+            Back to library
+          </button>
+        </div>
       </div>
     );
   }
 
-  const vcfg = voiceConfig(doc.voiceId);
-  const fmt = (s: number) => {
-    if (!isFinite(s)) return "0:00";
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
+  const themeClass = `reader-theme-${theme}`;
+  const themeMeta = THEME_META[theme];
+  const ThemeIcon = themeMeta.icon;
 
   return (
-    <div className="mx-auto max-w-3xl w-full px-4 sm:px-6 py-6">
-      <button
-        onClick={back}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-5"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Library
-      </button>
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
-              {doc.fileType}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: vcfg.color }} />
-              {vcfg.label}
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold leading-tight">{doc.title}</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            {doc.charCount.toLocaleString()} chars · {chunks.length} chunks · {ready}/{chunks.length} ready
-          </p>
-        </div>
-        {!allReady && (
-          <button
-            onClick={handleGenerateAll}
-            disabled={generating}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 text-amber-950 px-3 py-2 text-xs font-semibold hover:bg-amber-300 transition disabled:opacity-60 shrink-0"
-          >
-            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            {generating ? `${progress?.done ?? 0}/${progress?.total ?? 0}` : "Generate audio"}
-          </button>
-        )}
-      </div>
-
-      {/* Social controls: shelf + rating + review */}
-      <SocialBar doc={doc} />
-
-      {/* Generation banner */}
-      {generating && progress && (
-        <div className="mb-4 rounded-xl bg-amber-500/10 ring-1 ring-amber-400/30 p-3">
-          <div className="flex items-center justify-between text-xs text-amber-100 mb-1.5">
-            <span>Generating audio…</span>
-            <span>{progress.done}/{progress.total}</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-amber-500/20">
-            <div
-              className="h-full bg-amber-300 transition-all"
-              style={{ width: `${Math.round((progress.done / Math.max(progress.total, 1)) * 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Not ready banner */}
-      {!allReady && !generating && (
-        <div className="mb-4 rounded-xl bg-amber-500/10 ring-1 ring-amber-400/30 p-3 flex items-center gap-2 text-xs text-amber-100">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Some chunks aren't narrated yet. Click "Generate audio" to synthesize all pending chunks.</span>
-        </div>
-      )}
-
-      {/* Reading text */}
-      <div
-        ref={textRef}
-        className="rounded-2xl bg-card ring-1 ring-border/60 p-4 sm:p-6 max-h-[50vh] overflow-y-auto ct-scroll mb-5"
-      >
-        <div className="prose prose-invert max-w-none">
-          {chunks.map((ch, i) => (
-            <p
-              key={ch.id}
-              data-chunk-idx={i}
-              onClick={() => { setCurrentIndex(i); setIsPlaying(false); }}
-              className={cn(
-                "text-sm leading-relaxed mb-3 cursor-pointer rounded transition-colors px-1 py-0.5",
-                i === currentIndex
-                  ? "reading-highlight text-foreground"
-                  : "text-muted-foreground hover:text-foreground/80"
-              )}
-            >
-              {ch.text}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Player */}
-      <div className="sticky bottom-16 sm:bottom-4 z-30">
-        <div className="rounded-2xl bg-card/95 backdrop-blur-xl ring-1 ring-border/60 shadow-2xl shadow-black/40 p-3 sm:p-4">
-          <audio
-            ref={audioRef}
-            onEnded={handleEnded}
-            onCanPlay={() => setLoadingAudio(false)}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
+    <div className="fixed inset-0 bg-black grid place-items-center md:p-6">
+      {/* Phone frame on desktop, full-screen on mobile */}
+      <div className={cn(
+        "relative w-full h-full bg-black overflow-hidden",
+        "md:max-w-[420px] md:h-[calc(100vh-3rem)] md:rounded-[2.5rem] md:ring-[10px] md:ring-zinc-800 md:shadow-2xl",
+        "max-md:rounded-none max-md:ring-0"
+      )}>
+        {/* Reading surface with theme */}
+        <div
+          className={cn("absolute inset-0 transition-colors duration-300", themeClass)}
+          style={{ backgroundColor: "var(--reader-bg)" }}
+        >
+          {/* Tap zones overlay (transparent, captures taps) */}
+          <div
+            className="absolute inset-0 z-10 cursor-pointer"
+            onClick={handleTap}
           />
 
-          {/* Chunk info */}
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-muted-foreground">
-              Chunk {currentIndex + 1} / {chunks.length}
-              {current?.status === "pending" && " · generating…"}
-              {current?.status === "error" && " · failed"}
-            </p>
-            <button
-              onClick={cycleSpeed}
-              className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs font-medium hover:bg-muted/70 transition"
-            >
-              <Gauge className="h-3.5 w-3.5" />
-              {speed}×
-            </button>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => skip(-1)}
-              disabled={currentIndex === 0}
-              className="grid place-items-center h-9 w-9 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
-            >
-              <SkipBack className="h-5 w-5" />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              disabled={!current?.audioUrl}
-              className={cn(
-                "grid place-items-center h-12 w-12 rounded-full shadow-lg transition",
-                current?.audioUrl
-                  ? "bg-primary text-primary-foreground shadow-primary/20 hover:scale-105"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
-              )}
-            >
-              {loadingAudio ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="h-5 w-5 fill-current" />
-              ) : (
-                <Play className="h-5 w-5 fill-current ml-0.5" />
-              )}
-            </button>
-
-            <button
-              onClick={() => skip(1)}
-              disabled={currentIndex >= chunks.length - 1}
-              className="grid place-items-center h-9 w-9 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
-            >
-              <SkipForward className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Chunk dots */}
-          {chunks.length > 1 && (
-            <div className="mt-3 flex items-center gap-1 overflow-x-auto ct-scroll">
-              {chunks.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setCurrentIndex(i); setIsPlaying(false); }}
-                  className={cn(
-                    "h-1.5 rounded-full shrink-0 transition-all",
-                    i === currentIndex
-                      ? "w-6 bg-primary"
-                      : chunks[i]?.status === "ready"
-                      ? "w-1.5 bg-foreground/30 hover:bg-foreground/50"
-                      : "w-1.5 bg-amber-400/40"
+          {/* Page content */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pageIndex}
+                initial={{ opacity: 0, x: pageDirection === "next" ? 20 : -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: pageDirection === "next" ? -20 : 20 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="absolute inset-0 flex flex-col"
+              >
+                {/* Top spacer for chrome */}
+                <div className="h-16 shrink-0" />
+                {/* Reading text */}
+                <div className="flex-1 overflow-y-auto ct-scroll px-8 sm:px-10">
+                  {currentChapter && pageIndex === currentChapter.startIndex && (
+                    <p
+                      className="text-[11px] uppercase tracking-[0.25em] mb-4 mt-2"
+                      style={{ color: "var(--reader-accent)" }}
+                    >
+                      {currentChapter.title}
+                    </p>
                   )}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+                  <div
+                    className="whitespace-pre-wrap leading-[1.7] font-serif"
+                    style={{
+                      color: "var(--reader-fg)",
+                      fontSize: `${fontSize}px`,
+                      fontFamily: "'Georgia', 'Iowan Old Style', 'Palatino Linotype', serif",
+                    }}
+                  >
+                    {pages[pageIndex]?.text || ""}
+                  </div>
+                </div>
+                {/* Bottom spacer */}
+                <div className="h-20 shrink-0" />
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-/** Goodreads-style shelf switcher + star rating + review composer */
-function SocialBar({ doc }: { doc: any }) {
-  const bumpRefresh = useAppStore((s) => s.bumpRefresh);
-  const [shelf, setShelf] = React.useState<Shelf | null>(doc.shelf);
-  const [rating, setRating] = React.useState<number | null>(doc.rating);
-  const [review, setReview] = React.useState(doc.review || "");
-  const [showReview, setShowReview] = React.useState(false);
-
-  // Sync when doc changes
-  React.useEffect(() => {
-    setShelf(doc.shelf);
-    setRating(doc.rating);
-    setReview(doc.review || "");
-  }, [doc.id, doc.shelf, doc.rating, doc.review]);
-
-  async function patchShelf(s: Shelf | null) {
-    setShelf(s);
-    try {
-      await api(`/api/documents/${doc.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ shelf: s || "" }),
-      });
-      bumpRefresh();
-      if (s) toast.success(`Moved to ${SHELVES.find((x) => x.id === s)?.label}`);
-    } catch {
-      toast.error("Failed to update shelf");
-    }
-  }
-
-  async function patchRating(r: number | null) {
-    setRating(r);
-    try {
-      await api(`/api/documents/${doc.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ rating: r || 0 }),
-      });
-      bumpRefresh();
-    } catch {
-      toast.error("Failed to save rating");
-    }
-  }
-
-  async function saveReview() {
-    try {
-      await api(`/api/documents/${doc.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ review }),
-      });
-      bumpRefresh();
-      toast.success("Review saved");
-      setShowReview(false);
-    } catch {
-      toast.error("Failed to save review");
-    }
-  }
-
-  return (
-    <div className="mb-5 rounded-2xl bg-card ring-1 ring-border/60 p-3 sm:p-4 space-y-3">
-      {/* Shelf switcher */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">Shelf:</span>
-        {SHELVES.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => patchShelf(shelf === s.id ? null : s.id)}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition",
-              shelf === s.id
-                ? "bg-primary text-primary-foreground ring-primary"
-                : "bg-background text-muted-foreground ring-border hover:text-foreground hover:ring-primary/30"
+          {/* === TOP CHROME === */}
+          <AnimatePresence>
+            {showControls && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-0 inset-x-0 z-30"
+                style={{ backgroundColor: "var(--reader-bar)" }}
+              >
+                <div className="flex items-center justify-between px-4 h-16">
+                  <button
+                    onClick={back}
+                    className="grid place-items-center h-9 w-9 rounded-full transition hover:opacity-70"
+                    style={{ color: "var(--reader-fg)" }}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <div className="text-center min-w-0 flex-1 px-3">
+                    <p
+                      className="text-[10px] uppercase tracking-[0.15em] truncate"
+                      style={{ color: "var(--reader-fg-muted)" }}
+                    >
+                      {doc.title}
+                    </p>
+                    {currentChapter && (
+                      <p
+                        className="text-[11px] font-medium truncate"
+                        style={{ color: "var(--reader-fg)" }}
+                      >
+                        {currentChapter.title}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowToc(true)}
+                    className="grid place-items-center h-9 w-9 rounded-full transition hover:opacity-70"
+                    style={{ color: "var(--reader-fg)" }}
+                  >
+                    <List className="h-5 w-5" />
+                  </button>
+                </div>
+              </motion.div>
             )}
-          >
-            <span>{s.emoji}</span>
-            {s.label}
-          </button>
-        ))}
-      </div>
+          </AnimatePresence>
 
-      {/* Rating */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your rating:</span>
-          <StarRating value={rating} size={18} onChange={(v) => patchRating(v === rating ? 0 : v)} />
-          {rating ? <span className="text-xs text-muted-foreground ml-1">{rating}/5</span> : null}
+          {/* === BOTTOM CHROME (progress + controls) === */}
+          <AnimatePresence>
+            {showControls && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-0 inset-x-0 z-30"
+                style={{ backgroundColor: "var(--reader-bar)" }}
+              >
+                <div className="px-4 py-3 pb-5">
+                  {/* Progress slider */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <span
+                      className="text-[11px] tabular-nums w-8 text-right"
+                      style={{ color: "var(--reader-fg-muted)" }}
+                    >
+                      {pageIndex + 1}
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, pages.length - 1)}
+                      value={pageIndex}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setPageDirection(v > pageIndex ? "next" : "prev");
+                        setPageIndex(v);
+                      }}
+                      className="flex-1 ereader-slider"
+                      style={{ accentColor: "var(--reader-accent)" }}
+                    />
+                    <span
+                      className="text-[11px] tabular-nums w-8"
+                      style={{ color: "var(--reader-fg-muted)" }}
+                    >
+                      {pages.length}
+                    </span>
+                  </div>
+                  {/* Control row */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setFontSize((f) => Math.max(FONT_MIN, f - FONT_STEP))}
+                      disabled={fontSize <= FONT_MIN}
+                      className="grid place-items-center h-8 w-8 rounded-full transition disabled:opacity-30 hover:opacity-70"
+                      style={{ color: "var(--reader-fg)" }}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: "var(--reader-fg-muted)" }}
+                    >
+                      A
+                    </span>
+                    <button
+                      onClick={() => setFontSize((f) => Math.min(FONT_MAX, f + FONT_STEP))}
+                      disabled={fontSize >= FONT_MAX}
+                      className="grid place-items-center h-8 w-8 rounded-full transition disabled:opacity-30 hover:opacity-70"
+                      style={{ color: "var(--reader-fg)" }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+
+                    {/* Page turn */}
+                    <button
+                      onClick={goPrev}
+                      disabled={pageIndex === 0}
+                      className="grid place-items-center h-8 w-8 rounded-full transition disabled:opacity-30 hover:opacity-70"
+                      style={{ color: "var(--reader-fg)" }}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={goNext}
+                      disabled={pageIndex >= pages.length - 1}
+                      className="grid place-items-center h-8 w-8 rounded-full transition disabled:opacity-30 hover:opacity-70"
+                      style={{ color: "var(--reader-fg)" }}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+
+                    {/* Settings */}
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      className="grid place-items-center h-8 w-8 rounded-full transition hover:opacity-70"
+                      style={{ color: "var(--reader-fg)" }}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* === TABLE OF CONTENTS drawer === */}
+          <AnimatePresence>
+            {showToc && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowToc(false)}
+              >
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-0 left-0 bottom-0 w-72 max-w-[80%] overflow-y-auto ct-scroll p-5"
+                  style={{ backgroundColor: "var(--reader-bar)", color: "var(--reader-fg)" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">Contents</h3>
+                    <button onClick={() => setShowToc(false)} style={{ color: "var(--reader-fg-muted)" }}>
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {paginated.chapters.length === 0 ? (
+                    <p className="text-sm opacity-60">No chapters detected.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {paginated.chapters.map((ch, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setPageDirection(ch.startIndex > pageIndex ? "next" : "prev");
+                            setPageIndex(ch.startIndex);
+                            setShowToc(false);
+                          }}
+                          className={cn(
+                            "block w-full text-left rounded-lg px-3 py-2 text-sm transition",
+                            currentChapter?.startIndex === ch.startIndex ? "font-semibold" : "opacity-70"
+                          )}
+                          style={{
+                            backgroundColor: currentChapter?.startIndex === ch.startIndex ? "var(--reader-accent)22" : "transparent",
+                            color: currentChapter?.startIndex === ch.startIndex ? "var(--reader-accent)" : "var(--reader-fg)",
+                          }}
+                        >
+                          {ch.title}
+                          <span className="text-[10px] opacity-50 ml-2">p.{ch.startIndex + 1}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* === SETTINGS panel === */}
+          <AnimatePresence>
+            {showSettings && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowSettings(false)}
+              >
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-0 inset-x-0 rounded-t-2xl p-5 pb-8"
+                  style={{ backgroundColor: "var(--reader-bar)", color: "var(--reader-fg)" }}
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-semibold">Reading Settings</h3>
+                    <button onClick={() => setShowSettings(false)} style={{ color: "var(--reader-fg-muted)" }}>
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Theme */}
+                  <p className="text-[11px] uppercase tracking-wide mb-2" style={{ color: "var(--reader-fg-muted)" }}>
+                    Theme
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 mb-5">
+                    {(Object.keys(THEME_META) as Theme[]).map((t) => {
+                      const meta = THEME_META[t];
+                      const TIcon = meta.icon;
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setTheme(t)}
+                          className={cn(
+                            "rounded-xl p-3 flex flex-col items-center gap-1.5 ring-1 transition",
+                            theme === t ? "ring-2" : "ring-border/40 opacity-70"
+                          )}
+                          style={{
+                            backgroundColor: meta.swatch,
+                            color: t === "light" || t === "sepia" ? "#333" : "#fff",
+                            borderColor: theme === t ? "var(--reader-accent)" : "transparent",
+                          }}
+                        >
+                          <TIcon className="h-4 w-4" />
+                          <span className="text-xs font-medium">{meta.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Font size */}
+                  <p className="text-[11px] uppercase tracking-wide mb-2" style={{ color: "var(--reader-fg-muted)" }}>
+                    Font Size
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setFontSize((f) => Math.max(FONT_MIN, f - FONT_STEP))}
+                      disabled={fontSize <= FONT_MIN}
+                      className="grid place-items-center h-10 w-10 rounded-full ring-1 ring-border/40 disabled:opacity-30"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <div className="flex-1 text-center">
+                      <span className="text-2xl font-bold">{fontSize}</span>
+                      <span className="text-xs ml-1 opacity-60">px</span>
+                    </div>
+                    <button
+                      onClick={() => setFontSize((f) => Math.min(FONT_MAX, f + FONT_STEP))}
+                      disabled={fontSize >= FONT_MAX}
+                      className="grid place-items-center h-10 w-10 rounded-full ring-1 ring-border/40 disabled:opacity-30"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        <button
-          onClick={() => setShowReview((v) => !v)}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition"
-        >
-          <PenLine className="h-3.5 w-3.5" />
-          {doc.review ? "Edit review" : "Write a review"}
-        </button>
       </div>
-
-      {/* Review composer / display */}
-      <AnimatePresence>
-        {showReview && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <textarea
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              placeholder="Share what you thought about this book…"
-              rows={3}
-              maxLength={500}
-              className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition resize-none"
-            />
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">{review.length}/500</span>
-              <div className="flex gap-2">
-                <button onClick={() => setShowReview(false)} className="rounded-lg bg-muted text-muted-foreground px-3 py-1.5 text-xs font-medium hover:text-foreground transition">
-                  Cancel
-                </button>
-                <button onClick={saveReview} className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:brightness-110 transition">
-                  <Check className="h-3.5 w-3.5" /> Save
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Existing review (collapsed) */}
-      {doc.review && !showReview && (
-        <div className="rounded-lg bg-background/60 p-2.5 text-xs text-muted-foreground italic line-clamp-2">
-          &ldquo;{doc.review}&rdquo;
-        </div>
-      )}
     </div>
   );
 }

@@ -254,3 +254,72 @@
   animation: alive-pulse 1.8s ease-in-out infinite;
 }
 
+/* === E-reader reading themes === */
+/* The .reader-theme-* classes are applied to the reading surface. */
+.reader-theme-dark {
+  --reader-bg: oklch(0.13 0.012 260);
+  --reader-fg: oklch(0.92 0.004 260);
+  --reader-fg-muted: oklch(0.65 0.008 260);
+  --reader-accent: oklch(0.82 0.15 75);
+  --reader-bar: oklch(0.11 0.01 260);
+}
+
+.reader-theme-sepia {
+  --reader-bg: oklch(0.95 0.018 70);
+  --reader-fg: oklch(0.28 0.02 60);
+  --reader-fg-muted: oklch(0.48 0.02 60);
+  --reader-accent: oklch(0.5 0.12 50);
+  --reader-bar: oklch(0.9 0.02 70);
+}
+
+.reader-theme-light {
+  --reader-bg: oklch(0.99 0 0);
+  --reader-fg: oklch(0.2 0 0);
+  --reader-fg-muted: oklch(0.5 0 0);
+  --reader-accent: oklch(0.45 0.18 260);
+  --reader-bar: oklch(0.96 0 0);
+}
+
+/* Page-turn slide animations */
+@keyframes page-next-in {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes page-prev-in {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-page-next { animation: page-next-in 0.28s ease-out; }
+.animate-page-prev { animation: page-prev-in 0.28s ease-out; }
+
+/* E-reader progress slider */
+.ereader-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.25;
+  outline: none;
+}
+.ereader-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--reader-accent, #f59e0b);
+  cursor: pointer;
+  border: 2px solid var(--reader-bar, #000);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.ereader-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--reader-accent, #f59e0b);
+  cursor: pointer;
+  border: 2px solid var(--reader-bar, #000);
+}
+
+

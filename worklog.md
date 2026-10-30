@@ -204,3 +204,31 @@ Stage Summary:
 - Each scene now generates its own atmospheric manga-style illustration on-the-fly (~25-30s generation time)
 - Browser-verified: opening scene "The Death Note" → illustration generated (1793327880676-zbx074o.png); clicked choice "ruthless" → new scene "First Blood" → NEW illustration generated (1793327948891-ycq80a6.png); 0 console errors; 0 lint errors
 - Race-condition safe: fetchIdRef ensures only the latest scene's illustration is displayed (stale fetches are discarded)
+
+---
+Task ID: phone-ereader
+Agent: main
+Task: Rebuild Reader as a phone-app e-reader + fix PDF parsing
+
+Work Log:
+- pagination.ts: paginateText() splits rawText into reading pages (~1400 chars/page, paragraph-aware, never splits mid-paragraph). Detects "Chapter X" headings for chapter navigation. chapterForPage() finds which chapter a page belongs to.
+- globals.css: added 3 reading themes (reader-theme-dark/sepia/light) with --reader-bg/fg/fg-muted/accent/bar CSS vars; page-turn slide animations; custom progress slider styling.
+- reader-view.tsx COMPLETE REWRITE as phone-app e-reader:
+  • Phone frame on desktop (md:max-w-420px, rounded-2.5rem, ring-10px zinc-800 bezel, shadow-2xl); full-screen on mobile
+  • Paginated reading: text flows into pages, one page visible at a time
+  • Tap zones: left third = prev page, right third = next page, center = toggle controls
+  • Keyboard nav: ArrowLeft/ArrowRight/Space/Esc
+  • Top chrome: back button, title + current chapter, TOC button
+  • Bottom chrome: page slider (1 of N), font A-/A+, page turn chevrons, settings button
+  • Settings panel (slide-up): 3 theme swatches (Dark/Sepia/Light with colored preview), font size -/+ (14-24px range)
+  • TOC drawer (slide-from-left): chapter list with page numbers, tap to jump
+  • Page transitions: 0.25s slide animation (direction-aware)
+  • Serif font (Georgia/Iowan/Palatino), 1.7 line-height, 8-10px horizontal padding
+- PDF parsing fixed: switched from pdf-parse (v2 DOMMatrix error, v1 test-file bug) → pdfjs-dist (worker error) → pdf2json (pure JS, no worker, works perfectly). pdf2json extracts text from PDF pages via event-based API.
+- Generated test PDF "The Garden of Forking Paths" using pdfkit (2 pages, chapter structure)
+- Tested: upload PDF → parse (1708 chars) → paginate (2 pages) → open in e-reader → text displays with chapter heading "Chapter One: The Invitation"
+
+Stage Summary:
+- Inkvine is now a real phone-app e-reader: upload PDF → parsed → paginated → read page-by-page with tap-to-turn, font controls, 3 reading themes, chapter navigation, progress slider
+- PDF parsing works (pdf2json); EPUB works (epub2); TXT works (utf-8)
+- Browser-verified: PDF uploaded, opened in reader, text displays on 2 pages, 0 console errors, 0 lint errors; phone frame on desktop, full-screen on mobile
